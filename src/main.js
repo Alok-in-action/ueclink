@@ -114,13 +114,12 @@ function goToGender() {
   cleanup();
   showScreen(GenderScreen({
     profile:  userProfile,
+    onBack:   () => { signOut(auth); goToLanding(); },
     onSelect: (gender) => {
       userProfile.gender = gender;
-      // Save to sessionStorage instantly (works offline)
       try {
         sessionStorage.setItem(`ueclink_${currentUser.uid}`, JSON.stringify({ gender }));
       } catch (_) {}
-      // Also try Firestore in background
       trySetGender(currentUser.uid, gender);
       goToPreferences();
     },
@@ -131,6 +130,7 @@ function goToPreferences() {
   cleanup();
   showScreen(PreferencesScreen({
     profile: userProfile,
+    onBack:  () => goToGender(),
     onStart: (prefs) => goToMatching(prefs),
   }));
 }
@@ -140,6 +140,7 @@ function goToMatching(prefs) {
   const screen = MatchingScreen({
     profile:   userProfile,
     prefs,
+    onBack:    () => goToPreferences(),
     onMatched: ({ sessionId, partnerId }) => goToChat(sessionId, partnerId),
     onCancel:  () => goToPreferences(),
   });

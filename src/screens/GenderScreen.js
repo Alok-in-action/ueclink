@@ -2,40 +2,47 @@
 // Gender Selection Screen
 // ============================================================
 
-export function GenderScreen({ profile, onSelect }) {
-  const el = document.createElement('div');
-  el.innerHTML = `
-    <div class="gradient-bg"></div>
-    <div class="page-inner" style="gap:0;">
+import { NavHeader } from '../ui/NavHeader.js';
 
-      <!-- Header -->
-      <div style="padding-top:calc(var(--safe-top)+24px);margin-bottom:var(--space-2xl);">
-        <div class="wordmark" style="margin-bottom:var(--space-lg);">UEC<span>Link</span></div>
-        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
-          padding:12px 14px;display:flex;align-items:center;gap:10px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-dim);
-            border:1px solid var(--border-glow);display:flex;align-items:center;justify-content:center;
-            font-size:16px;flex-shrink:0;">🎓</div>
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${profile.branch}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${profile.yearLabel} · Verified Student</div>
-          </div>
-          <div class="chip chip-online" style="margin-left:auto;flex-shrink:0;">✓</div>
+export function GenderScreen({ profile, onSelect, onBack }) {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-base);';
+
+  // Nav
+  el.appendChild(NavHeader({
+    title: 'About You',
+    onBack,
+  }));
+
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <div class="gradient-bg"></div>
+    <div class="page-inner" style="gap:0;padding-top:var(--space-xl);">
+
+      <!-- Profile chip -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);
+        padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:var(--space-xl);
+        animation:fadeIn 0.4s var(--ease-out);">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-dim);
+          border:1px solid var(--border-glow);display:flex;align-items:center;justify-content:center;
+          font-size:16px;flex-shrink:0;">🎓</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${profile.branch}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${profile.yearLabel} · Verified Student</div>
         </div>
+        <div class="chip chip-online" style="margin-left:auto;flex-shrink:0;font-size:11px;">✓ Verified</div>
       </div>
 
       <!-- Step -->
       <div style="animation:fadeUp 0.4s 0.1s var(--ease-out) both;">
-        <p style="font-size:12px;font-weight:600;letter-spacing:1px;color:var(--accent-bright);
-          text-transform:uppercase;margin-bottom:8px;">Step 1 of 2</p>
+        <p style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--accent-bright);
+          text-transform:uppercase;margin-bottom:6px;">Step 1 of 2</p>
         <h1 style="font-size:24px;font-weight:800;margin-bottom:6px;">You are…</h1>
-        <p style="font-size:14px;color:var(--text-secondary);">
-          This helps us find you better matches.
-        </p>
+        <p style="font-size:14px;color:var(--text-secondary);">Helps us find you better matches.</p>
       </div>
 
       <!-- Options -->
-      <div style="display:flex;gap:12px;margin-top:var(--space-xl);flex:1;
+      <div style="display:flex;gap:12px;margin-top:var(--space-xl);
                   animation:fadeUp 0.4s 0.2s var(--ease-out) both;">
         <div class="pill-option" id="gender-male" data-gender="male">
           <span class="emoji">💪</span>
@@ -48,10 +55,11 @@ export function GenderScreen({ profile, onSelect }) {
       </div>
 
       <div style="margin-top:var(--space-xl);animation:fadeUp 0.4s 0.3s var(--ease-out) both;">
-        <button class="btn btn-primary" id="continue-btn" disabled>Continue</button>
+        <button class="btn btn-primary" id="continue-btn" disabled>Continue →</button>
       </div>
     </div>
   `;
+  el.appendChild(body);
 
   let selected = null;
   const continueBtn = el.querySelector('#continue-btn');

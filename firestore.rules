@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Matching queue — authenticated users only
+    match /matchingQueue/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow reading others in queue (for matchmaking)
+      allow read: if request.auth != null;
+    }
+
+    // Reports — any authenticated user can write (report), none can read (admin only)
+    match /reports/{docId} {
+      allow create: if request.auth != null;
+      allow read: if false;
+    }
+
+    // Meta config — readable by all authenticated
+    match /meta/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin only via console
+    }
+  }
+}

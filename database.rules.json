@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionId": {
+        ".read":  "auth != null && data.child('users').child(auth.uid).exists()",
+        ".write": "auth != null && (data.child('users').child(auth.uid).exists() || !data.exists())",
+        "messages": {
+          "$msgId": {
+            ".write": "auth != null"
+          }
+        },
+        "typing": {
+          "$userId": {
+            ".write": "auth != null && auth.uid == $userId"
+          }
+        },
+        "reveal": {
+          "$userId": {
+            ".write": "auth != null && auth.uid == $userId"
+          }
+        }
+      }
+    }
+  }
+}

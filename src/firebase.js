@@ -18,8 +18,7 @@ const firebaseConfig = {
   storageBucket:     "studio-2877955361-de17f.firebasestorage.app",
   messagingSenderId: "530627314675",
   appId:             "1:530627314675:web:3f26ea29b194bb6bd00886",
-  // Add your Realtime Database URL here once you enable it in Firebase Console:
-  // databaseURL: "https://studio-2877955361-de17f-default-rtdb.firebaseio.com",
+  databaseURL: "https://studio-2877955361-de17f-default-rtdb.asia-southeast1.firebasedatabase.app",
 };
 
 // Check if config looks real (basic heuristic)

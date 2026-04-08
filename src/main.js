@@ -54,14 +54,13 @@ onAuthStateChanged(auth, async (firebaseUser) => {
 
   currentUser = firebaseUser;
 
-  // ── 2. Build profile from email (never blocks on Firestore) ──
+  // ── 2. Build profile from email instantly (no Firestore needed) ──
   const parsed = parseUECEmail(firebaseUser.email);
   if (!parsed) {
     showToast('Could not parse your college email. Contact admin.', 'error', 5000);
     return;
   }
 
-  // Start with local-only profile (works even without Firestore)
   userProfile = {
     userId:      firebaseUser.uid,
     displayName: firebaseUser.displayName || '',
@@ -71,7 +70,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     gender:      null,
   };
 
-  // Try to load saved gender from sessionStorage first (instant)
+  // Restore saved gender from sessionStorage (instant, no network)
   try {
     const cached = sessionStorage.getItem(`ueclink_${firebaseUser.uid}`);
     if (cached) {
@@ -80,32 +79,28 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
   } catch (_) {}
 
-  // ── 3. Try Firestore in background (non-blocking) ────────
-  tryFirestoreProfile(firebaseUser, parsed).then(fsProfile => {
-    if (fsProfile && fsProfile.gender && !userProfile.gender) {
-      userProfile.gender = fsProfile.gender;
-    }
-  }).catch(() => {});
-
-  // ── 4. Check ban (Firestore optional) ────────────────────
-  let banned = false;
-  try {
-    const { checkBanStatus } = await import('./reports/report.js');
-    const ban = await checkBanStatus(firebaseUser.uid);
-    if (ban.banned) {
-      showScreen(BanScreen({ until: ban.until }));
-      return;
-    }
-  } catch (_) {
-    // Firestore not ready — skip ban check, allow through
-  }
-
-  // ── 5. Route based on gender ─────────────────────────────
+  // ── 3. Navigate immediately — no waiting ─────────────────────
   if (!userProfile.gender) {
     goToGender();
   } else {
     goToPreferences();
   }
+
+  // ── 4. Background tasks (non-blocking, never delay UI) ───────
+  tryFirestoreProfile(firebaseUser, parsed).then(fsProfile => {
+    if (fsProfile?.gender && !userProfile.gender) {
+      userProfile.gender = fsProfile.gender;
+    }
+  }).catch(() => {});
+
+  import('./reports/report.js').then(({ checkBanStatus }) => {
+    checkBanStatus(firebaseUser.uid).then(ban => {
+      if (ban.banned) {
+        showScreen(BanScreen({ until: ban.until }));
+      }
+    }).catch(() => {});
+  }).catch(() => {});
+
 });
 
 // ── Navigation ────────────────────────────────────────────────
@@ -186,11 +181,10 @@ function cleanup() {
 async function doGoogleLogin() {
   try {
     await signInWithPopup(auth, provider);
-    // onAuthStateChanged handles routing
   } catch (err) {
     if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
-    showToast('Login failed. Please try again.', 'error');
-    console.error('[UECLink] login error:', err);
+    console.error('[UECLink] login error:', err.code, err.message);
+    showToast(`Login error: ${err.code}`, 'error', 8000);
   }
 }
 

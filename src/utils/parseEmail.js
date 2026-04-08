@@ -38,9 +38,15 @@ export function parseUECEmail(email) {
   const [, , branchCode, yearShort, ] = match;
   const branchName    = BRANCH_MAP[branchCode] || branchCode.toUpperCase();
   const admissionYear = 2000 + parseInt(yearShort, 10);
-  const currentYear   = new Date().getFullYear();
-  const academicYear  = Math.min(currentYear - admissionYear + 1, 5);
-  const yearLabel     = ORDINAL[academicYear] ? `${ORDINAL[academicYear]} Year` : `${academicYear}th Year`;
+
+  // Indian academic year starts in July.
+  // Jan–June belongs to the academic year that started the PREVIOUS calendar year.
+  // e.g. April 2026 → academic year 2025-26 → academicStart = 2025
+  //      August 2026 → academic year 2026-27 → academicStart = 2026
+  const now              = new Date();
+  const academicStart    = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const academicYear     = Math.min(Math.max(academicStart - admissionYear + 1, 1), 5);
+  const yearLabel        = ORDINAL[academicYear] ? `${ORDINAL[academicYear]} Year` : `${academicYear}th Year`;
 
   return {
     rollNumber:    roll,
@@ -51,3 +57,4 @@ export function parseUECEmail(email) {
     yearLabel,
   };
 }
+

@@ -194,15 +194,25 @@ async function doGoogleLogin() {
 async function tryFirestoreProfile(user, parsed) {
   const ref  = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) {
-    return snap.data();
-  }
-  // Create profile doc if it doesn't exist
-  await setDoc(ref, {
+  
+  const profileData = {
     userId:      user.uid,
     displayName: user.displayName || '',
     email:       user.email,
     ...parsed,
+    // gender: null, // Don't reset gender here
+    lastSeen:    serverTimestamp(),
+  };
+
+  if (snap.exists()) {
+    // Update year/branch/name just in case they changed or time passed
+    await setDoc(ref, profileData, { merge: true });
+    return snap.data();
+  }
+
+  // Create new
+  await setDoc(ref, {
+    ...profileData,
     gender:      null,
     reportCount: 0,
     bannedUntil: null,

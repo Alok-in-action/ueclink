@@ -93,17 +93,28 @@ export function AdminScreen({ onBack }) {
 
       card.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="font-size:14px;font-weight:500;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userA}">${userA}</span>
+          <div style="font-size:14px;font-weight:500;width:100%;">
+            <!-- User A -->
+            <div id="wrapper-${userA}" style="display:flex;flex-direction:column;gap:2px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userA}">${userA}</span>
+              </div>
+              <div class="profile-info" data-uid="${userA}" style="font-size:10px;color:var(--text-muted);margin-left:14px;">Loading profile...</div>
             </div>
-            <div style="margin:4px 0;opacity:0.3;font-size:10px;">MATCHED WITH</div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userB}">${userB}</span>
+
+            <div style="margin:8px 0;opacity:0.2;font-size:9px;text-align:center;border-top:1px dashed var(--border);padding-top:8px;">MATCHED WITH</div>
+
+            <!-- User B -->
+            <div id="wrapper-${userB}" style="display:flex;flex-direction:column;gap:2px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userB}">${userB}</span>
+              </div>
+              <div class="profile-info" data-uid="${userB}" style="font-size:10px;color:var(--text-muted);margin-left:14px;">Loading profile...</div>
             </div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);">${timeStr}</div>
+          <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;margin-left:12px;">${timeStr}</div>
         </div>
+
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-primary btn-sm view-chat" data-sid="${sid}">Moderate Chat</button>
           <button class="btn btn-ghost btn-sm end-chat" data-sid="${sid}" style="color:var(--danger);">Kill Session</button>
@@ -114,18 +125,18 @@ export function AdminScreen({ onBack }) {
         const labels = card.querySelectorAll('.name-label');
         openPreview(sid, labels[0].textContent, labels[1].textContent);
       });
-      card.querySelector('.end-chat').addEventListener('click', () => doEndSession(sid));
-
-      sessionsList.appendChild(card);
-
-      // Lazy resolve names in background
-      resolveName(userA).then(name => {
-        const label = card.querySelector(`[data-uid="${userA}"]`);
-        if (label) label.textContent = name;
+  // Lazy resolve profiles in background
+      resolveProfile(userA).then(p => {
+        const nameLabel = card.querySelector(`.name-label[data-uid="${userA}"]`);
+        const infoLabel = card.querySelector(`.profile-info[data-uid="${userA}"]`);
+        if (nameLabel) nameLabel.textContent = p.name;
+        if (infoLabel) infoLabel.textContent = `${p.branch} • ${p.year}`;
       });
-      resolveName(userB).then(name => {
-        const label = card.querySelector(`[data-uid="${userB}"]`);
-        if (label) label.textContent = name;
+      resolveProfile(userB).then(p => {
+        const nameLabel = card.querySelector(`.name-label[data-uid="${userB}"]`);
+        const infoLabel = card.querySelector(`.profile-info[data-uid="${userB}"]`);
+        if (nameLabel) nameLabel.textContent = p.name;
+        if (infoLabel) infoLabel.textContent = `${p.branch} • ${p.year}`;
       });
     }
 
@@ -141,16 +152,25 @@ export function AdminScreen({ onBack }) {
   });
 
 
-  async function resolveName(uid) {
-    if (!uid || uid === 'Unknown') return uid;
+  async function resolveProfile(uid) {
+    if (!uid || uid === 'Unknown') return { name: uid, branch: '', year: '' };
     if (nameCache.has(uid)) return nameCache.get(uid);
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      const name = snap.exists() ? (snap.data().displayName || uid) : uid;
-      nameCache.set(uid, name);
-      return name;
-    } catch (_) { return uid; }
+      if (snap.exists()) {
+        const d = snap.data();
+        const p = {
+          name: d.displayName || uid,
+          branch: d.branch || 'Unknown Branch',
+          year: d.yearLabel || 'Unknown Year'
+        };
+        nameCache.set(uid, p);
+        return p;
+      }
+      return { name: uid, branch: 'New User', year: '-' };
+    } catch (_) { return { name: uid, branch: 'Error', year: '-' }; }
   }
+
 
   // --- Moderation ---
   let msgsUnsub = null;

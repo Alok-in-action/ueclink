@@ -74,6 +74,7 @@ export function AdminScreen({ onBack }) {
     }
 
     sessionsList.innerHTML = '';
+
     
     // Sort by createdAt descending
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
@@ -128,7 +129,17 @@ export function AdminScreen({ onBack }) {
       });
     }
 
+  }, (error) => {
+    console.error('[Admin] session error:', error);
+    sessionsList.innerHTML = `
+      <div style="padding:40px;text-align:center;color:var(--danger);">
+        <div style="font-size:32px;margin-bottom:12px;">🚫</div>
+        <div style="font-weight:700;">Connection Error</div>
+        <div style="font-size:12px;opacity:0.7;margin-top:4px;">${error.message}</div>
+      </div>
+    `;
   });
+
 
   async function resolveName(uid) {
     if (!uid || uid === 'Unknown') return uid;

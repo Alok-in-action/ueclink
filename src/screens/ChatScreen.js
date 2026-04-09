@@ -219,9 +219,14 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     msgInput.value = '';
     msgInput.style.height = 'auto';
     setTyping(sessionId, myUserId, false);
+    
+    // Explicitly focus back to input for mobile keyboard stability
+    msgInput.focus();
+
     await sendMessage(sessionId, myUserId, text);
     scrollToBottom('smooth');
   };
+
 
   sendBtn.addEventListener('click', (e) => {
     e.preventDefault();

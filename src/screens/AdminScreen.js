@@ -63,8 +63,7 @@ export function AdminScreen({ onBack }) {
 
   // --- Session Monitor ---
   const sessionsRef = ref(rtdb, 'sessions');
-  const sessionUnsub = onValue(sessionsRef, (snap) => {
-    console.log('[Admin] Received session snapshot. Exists:', snap.exists());
+  const sessionUnsub = onValue(sessionsRef, async (snap) => {
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
     countEl.textContent = sessionIds.length;
@@ -75,6 +74,7 @@ export function AdminScreen({ onBack }) {
     }
 
     sessionsList.innerHTML = '';
+
     
     // Sort by createdAt descending
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
@@ -118,56 +118,38 @@ export function AdminScreen({ onBack }) {
 
       sessionsList.appendChild(card);
 
-      // Lazy resolve profiles in background
-      resolveProfile(userA).then(p => {
+      // Lazy resolve names in background
+      resolveName(userA).then(name => {
         const label = card.querySelector(`[data-uid="${userA}"]`);
-        if (label) {
-          label.innerHTML = `
-            <div style="font-weight:700;color:var(--text-primary); text-align:left;">${p.name}</div>
-            <div style="font-size:11px;color:var(--accent-bright); text-align:left;">${p.year} · ${p.branch}</div>
-          `;
-        }
+        if (label) label.textContent = name;
       });
-      resolveProfile(userB).then(p => {
+      resolveName(userB).then(name => {
         const label = card.querySelector(`[data-uid="${userB}"]`);
-        if (label) {
-          label.innerHTML = `
-            <div style="font-weight:700;color:var(--text-primary); text-align:left;">${p.name}</div>
-            <div style="font-size:11px;color:var(--accent-bright); text-align:left;">${p.year} · ${p.branch}</div>
-          `;
-        }
+        if (label) label.textContent = name;
       });
     }
+
   }, (err) => {
-    console.error('[Admin] onValue error:', err);
-    sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">
-      Error fetching sessions: ${err.message}<br>
-      <small style="opacity:0.6;">Check Realtime Database Rules</small>
-    </div>`;
+    console.error('[Admin] Database error:', err);
+    sessionsList.innerHTML = `
+      <div style="padding:40px;text-align:center;color:var(--danger);">
+        <div style="font-size:32px;margin-bottom:12px;">🚫</div>
+        <div style="font-weight:700;margin-bottom:4px;">Permission Denied</div>
+        <div style="font-size:12px;opacity:0.7;">Please update your Realtime Database Security Rules in the Firebase Console to allow the admin read access.</div>
+      </div>
+    `;
   });
 
-
-  async function resolveProfile(uid) {
-    if (!uid || uid === 'Unknown') return { name: uid, year: '', branch: '' };
+  async function resolveName(uid) {
+    if (!uid || uid === 'Unknown') return uid;
     if (nameCache.has(uid)) return nameCache.get(uid);
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) {
-        const d = snap.data();
-        const profile = {
-          name:   d.displayName || uid,
-          year:   d.yearLabel || 'N/A',
-          branch: d.branch || 'N/A'
-        };
-        nameCache.set(uid, profile);
-        return profile;
-      }
-      return { name: uid, year: 'N/A', branch: 'N/A' };
-    } catch (_) { 
-      return { name: uid, year: 'Error', branch: 'Error' }; 
-    }
+      const name = snap.exists() ? (snap.data().displayName || uid) : uid;
+      nameCache.set(uid, name);
+      return name;
+    } catch (_) { return uid; }
   }
-
 
   // --- Moderation ---
   let msgsUnsub = null;

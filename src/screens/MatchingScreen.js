@@ -24,10 +24,12 @@ export function MatchingScreen({ profile, prefs, onMatched, onCancel }) {
   }));
 
   const body = document.createElement('div');
+  body.style.cssText = 'flex:1; display:flex; flex-direction:column; position:relative;';
   body.innerHTML = `
     <div class="gradient-bg"></div>
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-                text-align:center;gap:32px;padding:var(--space-xl) var(--space-lg);">
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+                text-align:center; gap:32px; padding:var(--space-xl) var(--space-lg);">
+
 
       <!-- Animated orb -->
       <div style="position:relative;width:140px;height:140px;">

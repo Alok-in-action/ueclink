@@ -30,23 +30,8 @@ let activeCleanup = null;
 if (window.location.pathname === '/debug') {
   showScreen(DebugScreen());
 } else {
-  // Show a neutral loading/splash screen on boot
-  showScreen({
-    render: () => {
-      const el = document.createElement('div');
-      el.className = 'screen';
-      el.innerHTML = `
-        <div class="gradient-bg"></div>
-        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
-          <div class="wordmark" style="font-size:32px; animation: breathe 2s ease-in-out infinite;">UEC<span>Link</span></div>
-          <div style="font-size:12px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase;">Syncing session...</div>
-        </div>
-      `;
-      return el;
-    }
-  });
+  goToLanding();
 }
-
 
 // ── Auth listener ─────────────────────────────────────────────
 onAuthStateChanged(auth, async (firebaseUser) => {
@@ -85,15 +70,14 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     gender:      null,
   };
 
-  // Restore saved gender from localStorage (persists across tab closes)
+  // Restore saved gender from sessionStorage (instant, no network)
   try {
-    const cached = localStorage.getItem(`ueclink_${firebaseUser.uid}`);
+    const cached = sessionStorage.getItem(`ueclink_${firebaseUser.uid}`);
     if (cached) {
       const saved = JSON.parse(cached);
       userProfile.gender = saved.gender || null;
     }
   } catch (_) {}
-
 
   // ── 3. Navigate immediately — no waiting ─────────────────────
   if (!userProfile.gender) {
@@ -134,9 +118,8 @@ function goToGender() {
     onSelect: (gender) => {
       userProfile.gender = gender;
       try {
-        localStorage.setItem(`ueclink_${currentUser.uid}`, JSON.stringify({ gender }));
+        sessionStorage.setItem(`ueclink_${currentUser.uid}`, JSON.stringify({ gender }));
       } catch (_) {}
-
       trySetGender(currentUser.uid, gender);
       goToPreferences();
     },

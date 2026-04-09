@@ -63,7 +63,8 @@ export function AdminScreen({ onBack }) {
 
   // --- Session Monitor ---
   const sessionsRef = ref(rtdb, 'sessions');
-  const sessionUnsub = onValue(sessionsRef, async (snap) => {
+  const sessionUnsub = onValue(sessionsRef, (snap) => {
+    console.log('[Admin] Received session snapshot. Exists:', snap.exists());
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
     countEl.textContent = sessionIds.length;
@@ -122,8 +123,8 @@ export function AdminScreen({ onBack }) {
         const label = card.querySelector(`[data-uid="${userA}"]`);
         if (label) {
           label.innerHTML = `
-            <div style="font-weight:700;color:var(--text-primary);">${p.name}</div>
-            <div style="font-size:11px;color:var(--accent-bright);">${p.year} · ${p.branch}</div>
+            <div style="font-weight:700;color:var(--text-primary); text-align:left;">${p.name}</div>
+            <div style="font-size:11px;color:var(--accent-bright); text-align:left;">${p.year} · ${p.branch}</div>
           `;
         }
       });
@@ -131,14 +132,20 @@ export function AdminScreen({ onBack }) {
         const label = card.querySelector(`[data-uid="${userB}"]`);
         if (label) {
           label.innerHTML = `
-            <div style="font-weight:700;color:var(--text-primary);">${p.name}</div>
-            <div style="font-size:11px;color:var(--accent-bright);">${p.year} · ${p.branch}</div>
+            <div style="font-weight:700;color:var(--text-primary); text-align:left;">${p.name}</div>
+            <div style="font-size:11px;color:var(--accent-bright); text-align:left;">${p.year} · ${p.branch}</div>
           `;
         }
       });
     }
-
+  }, (err) => {
+    console.error('[Admin] onValue error:', err);
+    sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">
+      Error fetching sessions: ${err.message}<br>
+      <small style="opacity:0.6;">Check Realtime Database Rules</small>
+    </div>`;
   });
+
 
   async function resolveProfile(uid) {
     if (!uid || uid === 'Unknown') return { name: uid, year: '', branch: '' };

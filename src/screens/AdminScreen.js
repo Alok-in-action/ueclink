@@ -63,7 +63,7 @@ export function AdminScreen({ onBack }) {
 
   // --- Session Monitor ---
   const sessionsRef = ref(rtdb, 'sessions');
-  const sessionUnsub = onValue(sessionsRef, (snap) => {
+  const sessionUnsub = onValue(sessionsRef, async (snap) => {
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
     countEl.textContent = sessionIds.length;
@@ -75,6 +75,7 @@ export function AdminScreen({ onBack }) {
 
     sessionsList.innerHTML = '';
     
+    // Sort by createdAt descending
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
 
     for (const sid of sorted) {
@@ -116,34 +117,50 @@ export function AdminScreen({ onBack }) {
 
       sessionsList.appendChild(card);
 
-      resolveName(userA).then(name => {
+      // Lazy resolve profiles in background
+      resolveProfile(userA).then(p => {
         const label = card.querySelector(`[data-uid="${userA}"]`);
-        if (label) label.textContent = name;
+        if (label) {
+          label.innerHTML = `
+            <div style="font-weight:700;color:var(--text-primary);">${p.name}</div>
+            <div style="font-size:11px;color:var(--accent-bright);">${p.year} · ${p.branch}</div>
+          `;
+        }
       });
-      resolveName(userB).then(name => {
+      resolveProfile(userB).then(p => {
         const label = card.querySelector(`[data-uid="${userB}"]`);
-        if (label) label.textContent = name;
+        if (label) {
+          label.innerHTML = `
+            <div style="font-weight:700;color:var(--text-primary);">${p.name}</div>
+            <div style="font-size:11px;color:var(--accent-bright);">${p.year} · ${p.branch}</div>
+          `;
+        }
       });
     }
-  }, (err) => {
-    console.error('[Admin] Firestore read error:', err);
-    sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);font-size:14px;">
-      ⚠️ Permission Denied<br>
-      <span style="font-size:11px;opacity:0.7;">Make sure you have updated the Security Rules in the Firebase Console!</span>
-    </div>`;
+
   });
 
-
-  async function resolveName(uid) {
-    if (!uid || uid === 'Unknown') return uid;
+  async function resolveProfile(uid) {
+    if (!uid || uid === 'Unknown') return { name: uid, year: '', branch: '' };
     if (nameCache.has(uid)) return nameCache.get(uid);
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      const name = snap.exists() ? (snap.data().displayName || uid) : uid;
-      nameCache.set(uid, name);
-      return name;
-    } catch (_) { return uid; }
+      if (snap.exists()) {
+        const d = snap.data();
+        const profile = {
+          name:   d.displayName || uid,
+          year:   d.yearLabel || 'N/A',
+          branch: d.branch || 'N/A'
+        };
+        nameCache.set(uid, profile);
+        return profile;
+      }
+      return { name: uid, year: 'N/A', branch: 'N/A' };
+    } catch (_) { 
+      return { name: uid, year: 'Error', branch: 'Error' }; 
+    }
   }
+
 
   // --- Moderation ---
   let msgsUnsub = null;

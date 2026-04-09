@@ -8,7 +8,6 @@ import {
 } from 'firebase/firestore';
 
 const META_REF = () => doc(db, 'meta', 'presence');
-const MIN_DISPLAY = 12; // minimum displayed count
 
 export async function setUserOnline(userId) {
   try {
@@ -33,12 +32,12 @@ export async function setUserOffline(userId) {
 export async function getOnlineCount() {
   try {
     const snap = await getDoc(META_REF());
-    const real = snap.exists() ? (snap.data().count || 0) : 0;
-    return Math.max(real, MIN_DISPLAY);
+    return snap.exists() ? (snap.data().count || 0) : 0;
   } catch (_) {
-    return MIN_DISPLAY;
+    return 0;
   }
 }
+
 
 export function getMatchesRecentText() {
   // Small random variation to feel alive

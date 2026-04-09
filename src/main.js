@@ -45,12 +45,14 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     return;
   }
 
-  // ── 1. Domain check ──────────────────────────────────────
-  if (!firebaseUser.email?.endsWith('@uecu.ac.in')) {
+  // ── 1. Domain check (plus Admin bypass) ──────────────────
+  const isAdmin = firebaseUser.email === 'ueclink@gmail.com';
+  if (!firebaseUser.email?.endsWith('@uecu.ac.in') && !isAdmin) {
     await signOut(auth);
     showScreen(AuthErrorScreen({ onRetry: goToLanding }));
     return;
   }
+
 
   currentUser = firebaseUser;
 
@@ -80,11 +82,17 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   } catch (_) {}
 
   // ── 3. Navigate immediately — no waiting ─────────────────────
-  if (!userProfile.gender) {
+  // If admin, they go to Admin screen by default or can jump there
+  if (parsed.isAdmin) {
+    import('./screens/AdminScreen.js').then(({ AdminScreen }) => {
+      showScreen(AdminScreen({ onBack: goToLanding }));
+    });
+  } else if (!userProfile.gender) {
     goToGender();
   } else {
     goToPreferences();
   }
+
 
   // ── 4. Background tasks (non-blocking, never delay UI) ───────
   tryFirestoreProfile(firebaseUser, parsed).then(fsProfile => {

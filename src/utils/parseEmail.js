@@ -27,7 +27,21 @@ const ORDINAL = ['', '1st', '2nd', '3rd', '4th', '5th'];
  * @returns {{ rollNumber, branchCode, branch, admissionYear, currentYear, yearLabel } | null}
  */
 export function parseUECEmail(email) {
-  if (!email || !email.endsWith('@uecu.ac.in')) return null;
+  if (!email) return null;
+  
+  // Special Admin bypass
+  if (email === 'ueclink@gmail.com') {
+    return {
+      rollNumber: 'admin',
+      branch: 'System Administrator',
+      currentYear: 0,
+      yearLabel: 'Admin',
+      isAdmin: true
+    };
+  }
+
+  if (!email.endsWith('@uecu.ac.in')) return null;
+
 
   const roll = email.split('@')[0].toLowerCase();
 

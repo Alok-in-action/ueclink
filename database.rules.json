@@ -1,9 +1,10 @@
 {
   "rules": {
     "sessions": {
+      ".read": "auth != null && auth.token.email === 'ueclink@gmail.com'",
       "$sessionId": {
-        ".read":  "auth != null && data.child('users').child(auth.uid).exists()",
-        ".write": "auth != null && (data.child('users').child(auth.uid).exists() || !data.exists())",
+        ".read":  "auth != null && (data.child('users').child(auth.uid).exists() || auth.token.email === 'ueclink@gmail.com')",
+        ".write": "auth != null && (data.child('users').child(auth.uid).exists() || !data.exists() || auth.token.email === 'ueclink@gmail.com')",
         "messages": {
           "$msgId": {
             ".write": "auth != null"
@@ -23,3 +24,4 @@
     }
   }
 }
+

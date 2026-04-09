@@ -47,19 +47,7 @@ export function parseUECEmail(email) {
 
   // Match: optional leading digits, branch letters, 2-digit year, trailing digits
   const match = roll.match(/^(\d*)([a-z]{2,3})(\d{2})(\d+)$/);
-  
-  if (!match) {
-    // Fallback for non-roll-number @uecu.ac.in emails (e.g. staff or generic accounts)
-    return {
-      rollNumber:    roll,
-      branchCode:    'gen',
-      branch:        'UEC Student',
-      admissionYear: 2024,
-      currentYear:   1,
-      yearLabel:     'Student',
-    };
-  }
-
+  if (!match) return null;
 
   const [, , branchCode, yearShort, ] = match;
   const branchName    = BRANCH_MAP[branchCode] || branchCode.toUpperCase();

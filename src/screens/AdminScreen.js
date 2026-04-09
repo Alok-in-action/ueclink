@@ -34,11 +34,11 @@ export function AdminScreen({ onBack }) {
         Live Sessions
       </h2>
       <div id="sessions-list" style="display:flex;flex-direction:column;gap:12px;">
-        <div style="padding:40px;text-align:center;color:var(--text-muted);">Waiting for students...</div>
+        <div style="padding:40px;text-align:center;color:var(--text-muted);">Monitoring for streams...</div>
       </div>
     </div>
 
-    <!-- Live Preview Overlay -->
+    <!-- Live Preview Overlay (hidden by default) -->
     <div id="chat-preview" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;
                   backdrop-filter:blur(8px);padding:var(--space-md);flex-direction:column;gap:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -59,6 +59,7 @@ export function AdminScreen({ onBack }) {
   const closePreview = el.querySelector('#close-preview');
 
   const nameCache = new Map();
+  let currentPreviewSessionId = null;
 
   // --- Session Monitor ---
   const sessionsRef = ref(rtdb, 'sessions');
@@ -68,11 +69,12 @@ export function AdminScreen({ onBack }) {
     countEl.textContent = sessionIds.length;
 
     if (sessionIds.length === 0) {
-      sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);">No active matches right now. Waiting for students...</div>`;
+      sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);">No active matches right now.</div>`;
       return;
     }
 
     sessionsList.innerHTML = '';
+    
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
 
     for (const sid of sorted) {
@@ -84,6 +86,7 @@ export function AdminScreen({ onBack }) {
       const card = document.createElement('div');
       card.className = 'card';
       card.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);';
+      
       const timeStr = sess.createdAt ? new Date(sess.createdAt).toLocaleTimeString() : 'Recent';
 
       card.innerHTML = `
@@ -113,29 +116,23 @@ export function AdminScreen({ onBack }) {
 
       sessionsList.appendChild(card);
 
-      // Resolve names
       resolveName(userA).then(name => {
-        const lbl = card.querySelector(`[data-uid="${userA}"]`);
-        if (lbl) lbl.textContent = name;
+        const label = card.querySelector(`[data-uid="${userA}"]`);
+        if (label) label.textContent = name;
       });
       resolveName(userB).then(name => {
-        const lbl = card.querySelector(`[data-uid="${userB}"]`);
-        if (lbl) lbl.textContent = name;
+        const label = card.querySelector(`[data-uid="${userB}"]`);
+        if (label) label.textContent = name;
       });
     }
   }, (err) => {
-    console.error('[Admin] RTDB error:', err);
-    sessionsList.innerHTML = `
-      <div style="padding:40px;text-align:center;color:var(--danger);">
-        <div style="font-size:24px;margin-bottom:12px;">🚫</div>
-        <div style="font-weight:700;">Connection Denied</div>
-        <div style="font-size:12px;opacity:0.7;margin-top:8px;">
-          Error: ${err.code || err.message}<br>
-          Check if database rules match <b>ueclink@gmail.com</b>
-        </div>
-      </div>
-    `;
+    console.error('[Admin] Firestore read error:', err);
+    sessionsList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);font-size:14px;">
+      ⚠️ Permission Denied<br>
+      <span style="font-size:11px;opacity:0.7;">Make sure you have updated the Security Rules in the Firebase Console!</span>
+    </div>`;
   });
+
 
   async function resolveName(uid) {
     if (!uid || uid === 'Unknown') return uid;
@@ -152,9 +149,10 @@ export function AdminScreen({ onBack }) {
   let msgsUnsub = null;
   function openPreview(sid, nameA, nameB) {
     if (msgsUnsub) msgsUnsub();
+    currentPreviewSessionId = sid;
     chatPreview.style.display = 'flex';
-    previewMsgs.innerHTML = '<div style="color:var(--text-muted);">Monitoring...</div>';
-    el.querySelector('#preview-title').textContent = `${nameA} & ${nameB}`;
+    previewMsgs.innerHTML = '<div style="color:var(--text-muted);">Loading conversation...</div>';
+    el.querySelector('#preview-title').textContent = `Moderating: ${nameA} & ${nameB}`;
 
     const msgRef = ref(rtdb, `sessions/${sid}/messages`);
     msgsUnsub = onValue(msgRef, (snap) => {
@@ -163,8 +161,9 @@ export function AdminScreen({ onBack }) {
       Object.keys(msgs).forEach(mid => {
         const m = msgs[mid];
         const row = document.createElement('div');
+        const sname = m.senderId === Object.keys(msgs)[0] ? 'User A' : 'User B'; // Precise mapping needs users list
         row.style.cssText = 'padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);font-size:13px;';
-        row.innerHTML = `<span style="font-size:10px;color:var(--accent-bright);font-weight:700;margin-right:8px;">MESG:</span> ${m.text}`;
+        row.innerHTML = `<span style="font-size:10px;color:var(--accent-bright);font-weight:700;margin-right:8px;">${sname}:</span> ${m.text}`;
         previewMsgs.appendChild(row);
       });
       previewMsgs.scrollTo(0, previewMsgs.scrollHeight);
@@ -172,12 +171,14 @@ export function AdminScreen({ onBack }) {
   }
 
   async function doEndSession(sid) {
-    if (!confirm('Kill session?')) return;
+    if (!confirm('Kill this session immediately?')) return;
     try {
       await update(ref(rtdb, `sessions/${sid}`), { status: 'ended' });
-      await remove(ref(rtdb, `sessions/${sid}`));
-      showToast('Terminated.');
-    } catch (_) {}
+      await remove(ref(rtdb, `sessions/${sid}`)); // Full delete
+      showToast('Session terminated.', 'success');
+    } catch (err) {
+      showToast('Failed to end session.', 'error');
+    }
   }
 
   closePreview.onclick = () => {

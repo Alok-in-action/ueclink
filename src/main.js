@@ -1,5 +1,5 @@
 // ============================================================
-// UEC Link — Main Entry Point (Stable Boot version)
+// UEC Link — Main Entry Point
 // ============================================================
 
 import './styles/main.css';
@@ -19,62 +19,50 @@ import { PreferencesScreen } from './screens/PreferencesScreen.js';
 import { MatchingScreen }    from './screens/MatchingScreen.js';
 import { ChatScreen }        from './screens/ChatScreen.js';
 import { PostChatScreen }    from './screens/PostChatScreen.js';
+import { DebugScreen }       from './screens/DebugScreen.js';
 
 // ── App State ────────────────────────────────────────────────
 let currentUser   = null;
 let userProfile   = null;
 let activeCleanup = null;
-let initialized   = false;
 
-// ── Boot sequence ─────────────────────────────────────────────
-function init() {
-  cleanup();
-  // Show a simple splash screen while waiting for Firebase Auth
-  const splash = document.createElement('div');
-  splash.className = 'page-inner';
-  splash.style.justifyContent = 'center';
-  splash.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
-      <div style="font-size:32px;animation:pulse-hint 1.5s infinite;">💎</div>
-      <div style="font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:1px;text-transform:uppercase;">
-        Restoring Session...
-      </div>
-    </div>
-  `;
-  showScreen(splash);
+// ── Boot ─────────────────────────────────────────────────────
+if (window.location.pathname === '/debug') {
+  showScreen(DebugScreen());
+} else {
+  goToLanding();
 }
 
-// ── Auth listener (The Source of Truth for Routing) ──────────
+// ── Auth listener ─────────────────────────────────────────────
 onAuthStateChanged(auth, async (firebaseUser) => {
-  initialized = true;
+  if (window.location.pathname === '/debug') return;
 
   if (!firebaseUser) {
+    // Signed out — go back to landing
     currentUser  = null;
     userProfile  = null;
     goToLanding();
     return;
   }
 
-  // 1. Domain check (plus Admin bypass)
+  // ── 1. Domain check (plus Admin bypass) ──────────────────
   const isAdmin = firebaseUser.email === 'ueclink@gmail.com';
   if (!firebaseUser.email?.endsWith('@uecu.ac.in') && !isAdmin) {
-    if (currentUser) {
-      // Only sign out if we weren't already blocked - prevents loops
-      await signOut(auth);
-      showScreen(AuthErrorScreen({ onRetry: goToLanding }));
-    }
+    await signOut(auth);
+    showScreen(AuthErrorScreen({ onRetry: goToLanding }));
     return;
   }
 
-  // Already checked and logged in? Don't re-init UI if we're on a subpage
-  if (currentUser?.uid === firebaseUser.uid && userProfile) {
-    return;
-  }
 
   currentUser = firebaseUser;
 
-  // 2. Build profile instantly
+  // ── 2. Build profile from email instantly (no Firestore needed) ──
   const parsed = parseUECEmail(firebaseUser.email);
+  if (!parsed) {
+    showToast('Could not parse your college email. Contact admin.', 'error', 5000);
+    return;
+  }
+
   userProfile = {
     userId:      firebaseUser.uid,
     displayName: firebaseUser.displayName || '',
@@ -84,7 +72,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     gender:      null,
   };
 
-  // Restore saved gender from sessionStorage
+  // Restore saved gender from sessionStorage (instant, no network)
   try {
     const cached = sessionStorage.getItem(`ueclink_${firebaseUser.uid}`);
     if (cached) {
@@ -93,10 +81,11 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
   } catch (_) {}
 
-  // 3. Simple Routing based on state
+  // ── 3. Navigate immediately — no waiting ─────────────────────
+  // If admin, they go to Admin screen by default or can jump there
   if (parsed.isAdmin) {
     import('./screens/AdminScreen.js').then(({ AdminScreen }) => {
-      showScreen(AdminScreen({ onBack: () => { signOut(auth); goToLanding(); } }));
+      showScreen(AdminScreen({ onBack: goToLanding }));
     });
   } else if (!userProfile.gender) {
     goToGender();
@@ -104,14 +93,11 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     goToPreferences();
   }
 
-  // 4. Background tasks
+
+  // ── 4. Background tasks (non-blocking, never delay UI) ───────
   tryFirestoreProfile(firebaseUser, parsed).then(fsProfile => {
     if (fsProfile?.gender && !userProfile.gender) {
       userProfile.gender = fsProfile.gender;
-      // If we were on gender screen, move to preferences now that we know gender
-      if (document.querySelector('.gender-screen')) {
-         goToPreferences();
-      }
     }
   }).catch(() => {});
 
@@ -122,6 +108,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
       }
     }).catch(() => {});
   }).catch(() => {});
+
 });
 
 // ── Navigation ────────────────────────────────────────────────
@@ -138,7 +125,9 @@ function goToGender() {
     onBack:   () => { signOut(auth); goToLanding(); },
     onSelect: (gender) => {
       userProfile.gender = gender;
-      try { sessionStorage.setItem(`ueclink_${currentUser.uid}`, JSON.stringify({ gender })); } catch (_) {}
+      try {
+        sessionStorage.setItem(`ueclink_${currentUser.uid}`, JSON.stringify({ gender }));
+      } catch (_) {}
       trySetGender(currentUser.uid, gender);
       goToPreferences();
     },
@@ -174,7 +163,7 @@ function goToChat(sessionId, partnerId) {
     myUserId:        currentUser.uid,
     partnerYearLabel: userProfile.yearLabel,
     myProfile:        userProfile,
-    onEnd: () => goToPostChat(),
+    onEnd: ({ sessionId }) => goToPostChat(sessionId),
   });
   activeCleanup = () => { if (screen._cleanup) screen._cleanup(); };
   showScreen(screen);
@@ -193,35 +182,40 @@ function cleanup() {
   if (activeCleanup) { activeCleanup(); activeCleanup = null; }
 }
 
-// ── Auth Handlers ─────────────────────────────────────────────
+// ── Google Login ──────────────────────────────────────────────
 
 async function doGoogleLogin() {
   try {
     await signInWithPopup(auth, provider);
   } catch (err) {
     if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+    console.error('[UECLink] login error:', err.code, err.message);
     showToast(`Login error: ${err.code}`, 'error', 8000);
   }
 }
 
-// ── Firestore Helpers ──────────────────────────────────────────
+// ── Firestore helpers (best-effort, never block UI) ───────────
 
 async function tryFirestoreProfile(user, parsed) {
   const ref  = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
+  
   const profileData = {
     userId:      user.uid,
     displayName: user.displayName || '',
     email:       user.email,
     ...parsed,
+    // gender: null, // Don't reset gender here
     lastSeen:    serverTimestamp(),
   };
 
   if (snap.exists()) {
+    // Update year/branch/name just in case they changed or time passed
     await setDoc(ref, profileData, { merge: true });
     return snap.data();
   }
 
+  // Create new
   await setDoc(ref, {
     ...profileData,
     gender:      null,
@@ -233,8 +227,7 @@ async function tryFirestoreProfile(user, parsed) {
 }
 
 async function trySetGender(uid, gender) {
-  try { await setDoc(doc(db, 'users', uid), { gender }, { merge: true }); } catch (_) {}
+  try {
+    await setDoc(doc(db, 'users', uid), { gender }, { merge: true });
+  } catch (_) {}
 }
-
-// Launch
-init();

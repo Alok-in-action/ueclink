@@ -45,7 +45,7 @@ export function PostChatScreen({ myUserId, sessionId, myProfile, onFindNew }) {
         border-radius:var(--radius-md);padding:14px;
         animation:fadeUp 0.4s var(--ease-out);">
         <p style="font-size:13px;color:var(--accent-bright);">
-          ⏳ Waiting for the other person to accept…
+          ⏳ Curiosity is building... waiting for them to agree!
         </p>
       </div>
 
@@ -55,11 +55,11 @@ export function PostChatScreen({ myUserId, sessionId, myProfile, onFindNew }) {
         border-radius:var(--radius-md);padding:14px;
         animation:fadeUp 0.4s var(--ease-out);">
         <p style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">
-          👀 The other person wants to reveal their identity.
+          🎉 They want to reveal! Ready to see who you were talking to?
         </p>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" id="accept-reveal-btn" style="flex:1;">Accept</button>
-          <button class="btn btn-ghost btn-sm" id="decline-reveal-btn" style="flex:1;">Decline</button>
+          <button class="btn btn-primary btn-sm" id="accept-reveal-btn" style="flex:1;">Yes, Reveal!</button>
+          <button class="btn btn-ghost btn-sm" id="decline-reveal-btn" style="flex:1;">Stay Hidden</button>
         </div>
       </div>
 
@@ -76,12 +76,12 @@ export function PostChatScreen({ myUserId, sessionId, myProfile, onFindNew }) {
         </button>
 
         <button class="btn btn-ghost" id="reveal-btn">
-          ✨ Reveal Identity
+          🕵️ Who was this?
         </button>
       </div>
 
       <p style="font-size:11px;color:var(--text-muted);">
-        Identity reveals only when <em>both</em> agree.
+        You only see their name if you <em>both</em> agree to reveal.
       </p>
     </div>
   `;

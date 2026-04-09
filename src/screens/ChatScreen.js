@@ -1,5 +1,5 @@
 // ============================================================
-// Chat Screen — Optimized for Perfect Keyboard Stability
+// Chat Screen — Final Fix for Keyboard Overlap & Accessibility
 // ============================================================
 
 import {
@@ -13,7 +13,8 @@ import { showModal, hideModal } from '../ui/modal.js';
 export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const el = document.createElement('div');
   el.className = 'screen';
-  el.style.cssText = 'height:100dvh; display:flex; flex-direction:column; overflow:hidden;';
+  // Use a fixed flex container for the whole screen
+  el.style.cssText = 'height:100dvh; display:flex; flex-direction:column; overflow:hidden; position:relative;';
 
   // State
   let sessionEnded = false;
@@ -22,11 +23,11 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   let cleanups    = [];
 
   el.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;width:100%;position:relative;">
+    <div id="chat-container" style="display:flex;flex-direction:column;height:100%;width:100%;position:relative;overflow:hidden;">
       <div class="gradient-bg"></div>
 
-      <!-- Mysterious Header (Fixed) -->
-      <div class="chat-header">
+      <!-- Mysterious Header -->
+      <div class="chat-header" id="chat-header">
         <div style="position:relative;">
           <div style="width:42px;height:42px;border-radius:50%;
             background:var(--bg-card-2);border:1.5px solid var(--border-glow);
@@ -49,24 +50,22 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
         </div>
 
         <button id="report-btn" style="background:none;border:none;cursor:pointer;padding:8px;
-          color:var(--text-muted);border-radius:var(--radius-sm);transition:color 0.15s;">
+          color:var(--text-muted);border-radius:var(--radius-sm);">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
           </svg>
         </button>
       </div>
 
-      <!-- Chat Area (Scrollable) -->
+      <!-- Messages Area -->
       <div id="messages-area" style="flex:1;overflow-y:auto;padding:20px 16px;
         display:flex;flex-direction:column;gap:12px;overscroll-behavior:none;
         -webkit-overflow-scrolling:touch;z-index:1;">
         
-        <!-- Conversation Starter -->
         <div style="text-align:center;margin:10px 0 24px;">
           <div style="display:inline-block;max-width:280px;background:rgba(26,26,46,0.6);
             backdrop-filter:blur(4px);border:1px solid var(--border);
-            padding:12px 18px;border-radius:var(--radius-lg);
-            animation:fadeIn 0.6s var(--ease-out);">
+            padding:12px 18px;border-radius:var(--radius-lg);">
             <p style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:4px;">
               ✨ You both are 2nd year.
             </p>
@@ -80,7 +79,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
       <!-- Typing Indicator -->
       <div id="typing-slot" style="padding:0 16px 8px;min-height:36px;z-index:2;"></div>
 
-      <!-- Footer / Input (Anchored to keyboard) -->
+      <!-- Footer -->
       <div class="chat-footer" id="chat-footer">
         <div style="display:flex;gap:12px;padding:8px 16px 4px;opacity:0.7;">
           <button id="skip-btn" style="background:none;border:none;color:var(--text-secondary);
@@ -89,7 +88,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25H15m-10.5-15h10.5a2.25 2.25 0 012.25 2.25v6.75" />
             </svg>
-            Skip Chat
+            Skip
           </button>
           <div style="flex:1;"></div>
           <button id="end-btn" style="background:none;border:none;color:var(--danger);
@@ -98,7 +97,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
           </button>
         </div>
 
-        <div class="input-bar">
+        <div class="input-bar" style="padding-bottom:12px;">
           <textarea class="input-field" id="msg-input" rows="1"
             placeholder="Type a message..." style="min-height:48px;"></textarea>
           <button class="send-btn" id="send-btn">
@@ -112,11 +111,11 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     </div>
   `;
 
-  const messagesArea = el.querySelector('#messages-area');
-  const msgInput     = el.querySelector('#msg-input');
-  const sendBtn      = el.querySelector('#send-btn');
-  const typingSlot   = el.querySelector('#typing-slot');
-  const chatFooter   = el.querySelector('#chat-footer');
+  const chatContainer = el.querySelector('#chat-container');
+  const messagesArea  = el.querySelector('#messages-area');
+  const msgInput      = el.querySelector('#msg-input');
+  const sendBtn       = el.querySelector('#send-btn');
+  const typingSlot    = el.querySelector('#typing-slot');
 
   let userScrolledUp = false;
 
@@ -128,7 +127,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   };
 
   messagesArea.addEventListener('scroll', () => {
-    const atBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 100;
+    const atBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 120;
     userScrolledUp = !atBottom;
   });
 
@@ -164,27 +163,30 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     scrollToBottom();
   };
 
-  // --- Keyboard Stability (Advanced) ---
-  const updateViewport = () => {
+  // --- THE FIX: Dynamic Container Resizing ---
+  const handleViewportChange = () => {
     if (!window.visualViewport) return;
+    
+    // Set the CONTAINER height to exactly the visible viewport height
+    // This forces Flexbox to shrink the messages-area and keep the input bar on screen
     const vh = window.visualViewport.height;
-    const offset = window.innerHeight - vh;
+    chatContainer.style.height = `${vh}px`;
     
-    // Lift the footer using translateY for high performance
-    chatFooter.style.transform = `translateY(-${Math.max(offset, 0)}px)`;
+    // Safety check: sometimes iOS needs a tiny bit of help to avoid scroll-leak
+    window.scrollTo(0, 0);
     
-    // Ensure scroll position is maintained
-    if (offset > 0) {
-      scrollToBottom('auto');
-    }
+    // Always jump to bottom on resize to keep messages visible
+    scrollToBottom('auto');
   };
 
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', updateViewport);
-    window.visualViewport.addEventListener('scroll', updateViewport);
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+    // Initial call to ensure everything is aligned
+    handleViewportChange();
     cleanups.push(() => {
-      window.visualViewport.removeEventListener('resize', updateViewport);
-      window.visualViewport.removeEventListener('scroll', updateViewport);
+      window.visualViewport.removeEventListener('resize', handleViewportChange);
+      window.visualViewport.removeEventListener('scroll', handleViewportChange);
     });
   }
 
@@ -218,6 +220,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     msgInput.style.height = 'auto';
     setTyping(sessionId, myUserId, false);
     await sendMessage(sessionId, myUserId, text);
+    scrollToBottom('smooth');
   };
 
   sendBtn.addEventListener('click', (e) => {
@@ -282,7 +285,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
         btn.addEventListener('click', async () => {
           hideModal();
           await submitReport(myUserId, 'partner', sessionId, btn.dataset.reason);
-          showToast('Report submitted.', 'success');
+          showToast('Report submitted. Thank you.', 'success');
         });
       });
       modalEl.querySelector('#cancel-report').addEventListener('click', hideModal);

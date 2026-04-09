@@ -85,12 +85,14 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
+  height: 100dvh; /* Dynamic viewport height */
 }
 
 #screen-container {
   position: relative;
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -104,10 +106,12 @@ body {
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none; /* Prevent rubber-banding */
   -webkit-overflow-scrolling: touch;
   will-change: transform, opacity;
+  height: 100%;
 }
+
 
 /* ── Screen transitions ── */
 .screen.slide-enter {
@@ -679,3 +683,11 @@ select.styled-select option:checked {
 
 /* ── Selection ── */
 ::selection { background: var(--accent-dim); }
+
+/* ── Body Lock (for Chat) ── */
+body.chat-active {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

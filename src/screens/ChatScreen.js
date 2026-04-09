@@ -1,5 +1,5 @@
 // ============================================================
-// Chat Screen — redesigned for mystery and mobile fluidity
+// Chat Screen — Optimized for Perfect Keyboard Stability
 // ============================================================
 
 import {
@@ -10,9 +10,10 @@ import { submitReport } from '../reports/report.js';
 import { showToast } from '../ui/toast.js';
 import { showModal, hideModal } from '../ui/modal.js';
 
-export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, onEnd }) {
+export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const el = document.createElement('div');
-  el.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-base);';
+  el.className = 'screen';
+  el.style.cssText = 'height:100dvh; display:flex; flex-direction:column; overflow:hidden;';
 
   // State
   let sessionEnded = false;
@@ -21,10 +22,10 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
   let cleanups    = [];
 
   el.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;position:relative;overflow:hidden;">
+    <div style="display:flex;flex-direction:column;height:100%;width:100%;position:relative;">
       <div class="gradient-bg"></div>
 
-      <!-- Mysterious Header -->
+      <!-- Mysterious Header (Fixed) -->
       <div class="chat-header">
         <div style="position:relative;">
           <div style="width:42px;height:42px;border-radius:50%;
@@ -55,9 +56,9 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
         </button>
       </div>
 
-      <!-- Chat Area -->
+      <!-- Chat Area (Scrollable) -->
       <div id="messages-area" style="flex:1;overflow-y:auto;padding:20px 16px;
-        display:flex;flex-direction:column;gap:12px;overscroll-behavior:contain;
+        display:flex;flex-direction:column;gap:12px;overscroll-behavior:none;
         -webkit-overflow-scrolling:touch;z-index:1;">
         
         <!-- Conversation Starter -->
@@ -79,9 +80,8 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
       <!-- Typing Indicator -->
       <div id="typing-slot" style="padding:0 16px 8px;min-height:36px;z-index:2;"></div>
 
-      <!-- Footer / Input -->
+      <!-- Footer / Input (Anchored to keyboard) -->
       <div class="chat-footer" id="chat-footer">
-        <!-- Secondary Actions (Skip/End) -->
         <div style="display:flex;gap:12px;padding:8px 16px 4px;opacity:0.7;">
           <button id="skip-btn" style="background:none;border:none;color:var(--text-secondary);
             font-size:12px;font-weight:600;padding:4px 8px;cursor:pointer;
@@ -98,7 +98,6 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
           </button>
         </div>
 
-        <!-- Input Bar -->
         <div class="input-bar">
           <textarea class="input-field" id="msg-input" rows="1"
             placeholder="Type a message..." style="min-height:48px;"></textarea>
@@ -122,18 +121,18 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
   let userScrolledUp = false;
 
   // --- Scroll Logic ---
-  const scrollToBottom = (force = false) => {
-    if (!userScrolledUp || force) {
-      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+  const scrollToBottom = (behavior = 'smooth') => {
+    if (!userScrolledUp) {
+      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior });
     }
   };
 
   messagesArea.addEventListener('scroll', () => {
-    const atBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 80;
+    const atBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 100;
     userScrolledUp = !atBottom;
   });
 
-  // --- Message Component ---
+  // --- Message Rendering ---
   const renderMessages = (msgs) => {
     msgs.forEach(msg => {
       if (seenKeys.has(msg.key)) {
@@ -146,7 +145,6 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
 
       const wrapper = document.createElement('div');
       wrapper.dataset.key = msg.key;
-      wrapper.className = isMine ? 'msg-wrapper mine' : 'msg-wrapper theirs';
       wrapper.style.cssText = `display:flex;flex-direction:column;${isMine ? 'align-items:flex-end;' : 'align-items:flex-start;'}`;
 
       const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -166,15 +164,41 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
     scrollToBottom();
   };
 
-  // --- Real-time Listeners ---
+  // --- Keyboard Stability (Advanced) ---
+  const updateViewport = () => {
+    if (!window.visualViewport) return;
+    const vh = window.visualViewport.height;
+    const offset = window.innerHeight - vh;
+    
+    // Lift the footer using translateY for high performance
+    chatFooter.style.transform = `translateY(-${Math.max(offset, 0)}px)`;
+    
+    // Ensure scroll position is maintained
+    if (offset > 0) {
+      scrollToBottom('auto');
+    }
+  };
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateViewport);
+    window.visualViewport.addEventListener('scroll', updateViewport);
+    cleanups.push(() => {
+      window.visualViewport.removeEventListener('resize', updateViewport);
+      window.visualViewport.removeEventListener('scroll', updateViewport);
+    });
+  }
+
+  // Body Scroll Lock
+  document.body.classList.add('chat-active');
+  cleanups.push(() => document.body.classList.remove('chat-active'));
+
+  // --- Real-time Logic ---
   cleanups.push(listenMessages(sessionId, renderMessages));
   
   cleanups.push(listenTyping(sessionId, myUserId, (isTyping) => {
     typingSlot.innerHTML = isTyping
       ? `<div class="typing-indicator" style="margin-left:12px;">
-           <div class="typing-dot"></div>
-           <div class="typing-dot"></div>
-           <div class="typing-dot"></div>
+           <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
          </div>`
       : '';
   }));
@@ -194,12 +218,18 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
     msgInput.style.height = 'auto';
     setTyping(sessionId, myUserId, false);
     await sendMessage(sessionId, myUserId, text);
-    try { navigator.vibrate(12); } catch (_) {}
   };
 
-  sendBtn.addEventListener('click', doSend);
+  sendBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    doSend();
+  });
+
   msgInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      doSend();
+    }
   });
 
   msgInput.addEventListener('input', () => {
@@ -233,7 +263,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
         Stranger has left the conversation.
       </span>`;
     messagesArea.appendChild(banner);
-    scrollToBottom(true);
+    scrollToBottom('auto');
     setTimeout(() => onEnd({ sessionId, partnerYearLabel }), 2500);
   };
 
@@ -242,14 +272,8 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
     const content = `
       <div class="modal-handle"></div>
       <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;">Report User</h2>
-      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">
-        Help keep UEC Link safe. Why are you reporting?
-      </p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        ${reasons.map(r => `
-          <button class="btn btn-ghost btn-sm report-reason" data-reason="${r}"
-            style="justify-content:flex-start;padding:14px 20px;">${r}</button>
-        `).join('')}
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;">
+        ${reasons.map(r => `<button class="btn btn-ghost btn-sm report-reason" data-reason="${r}">${r}</button>`).join('')}
       </div>
       <button class="btn btn-ghost btn-sm" id="cancel-report" style="margin-top:16px;border:none;">Cancel</button>
     `;
@@ -258,7 +282,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
         btn.addEventListener('click', async () => {
           hideModal();
           await submitReport(myUserId, 'partner', sessionId, btn.dataset.reason);
-          showToast('Report submitted. Investigating...', 'success');
+          showToast('Report submitted.', 'success');
         });
       });
       modalEl.querySelector('#cancel-report').addEventListener('click', hideModal);
@@ -270,18 +294,6 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, myProfile, o
     clearTimeout(typingTimer);
     setTyping(sessionId, myUserId, false);
   };
-
-  // Mobile keyboard viewport handling
-  if (window.visualViewport) {
-    const onResize = () => {
-      const vh = window.visualViewport.height;
-      const offset = window.innerHeight - vh;
-      chatFooter.style.paddingBottom = `${Math.max(offset, 0) + 0}px`;
-      scrollToBottom();
-    };
-    window.visualViewport.addEventListener('resize', onResize);
-    cleanups.push(() => window.visualViewport.removeEventListener('resize', onResize));
-  }
 
   el._cleanup = cleanup;
   return el;

@@ -45,7 +45,7 @@ export function parseUECEmail(email) {
   //      August 2026 → academic year 2026-27 → academicStart = 2026
   const now              = new Date();
   const academicStart    = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
-  const academicYear     = Math.min(Math.max(academicStart - admissionYear + 1, 1), 4);
+  const academicYear     = Math.min(Math.max(academicStart - admissionYear + 1, 1), 5);
   const yearLabel        = ORDINAL[academicYear] ? `${ORDINAL[academicYear]} Year` : `${academicYear}th Year`;
 
   return {

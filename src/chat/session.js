@@ -95,6 +95,22 @@ export function listenSessionStatus(sessionId, callback) {
 }
 
 /**
+ * Request mutual reveal. Sets current user's reveal flag.
+ */
+export function setReveal(sessionId, userId, value) {
+  set(ref(rtdb, `sessions/${sessionId}/reveal/${userId}`), value);
+}
+
+/**
+ * Listen for reveal state.
+ */
+export function listenReveal(sessionId, callback) {
+  const revealRef = ref(rtdb, `sessions/${sessionId}/reveal`);
+  onValue(revealRef, (snap) => callback(snap.val() || {}));
+  return () => off(revealRef);
+}
+
+/**
  * End a session — marks as ended, schedules RTDB cleanup.
  */
 export async function endSession(sessionId) {

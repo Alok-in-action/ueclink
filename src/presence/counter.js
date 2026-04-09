@@ -34,16 +34,9 @@ export async function getOnlineCount() {
   try {
     const snap = await getDoc(META_REF());
     const real = snap.exists() ? (snap.data().count || 0) : 0;
-    
-    // Calculate jitter based on current minute to keep it consistent 
-    // for all users but moving over time.
-    const now = new Date();
-    const minute = now.getMinutes();
-    const jitter = (minute % 5) - 2; // oscillates between -2 and +2
-    
-    return Math.max(real + jitter, MIN_DISPLAY + jitter);
+    return Math.max(real, MIN_DISPLAY);
   } catch (_) {
-    return MIN_DISPLAY + Math.floor(Math.random() * 3);
+    return MIN_DISPLAY;
   }
 }
 

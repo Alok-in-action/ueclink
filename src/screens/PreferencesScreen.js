@@ -5,8 +5,7 @@
 import { NavHeader } from '../ui/NavHeader.js';
 
 export function PreferencesScreen({ profile, onStart, onBack }) {
-  // targetYear: 'any', 1, 2, 3, 4
-  const prefs = { targetYear: 'any', oppositeGender: false };
+  const prefs = { sameYear: true, oppositeGender: false };
 
   const el = document.createElement('div');
   el.style.cssText = 'display:flex;flex-direction:column;height:100%;background:var(--bg-base);';
@@ -26,34 +25,22 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
           text-transform:uppercase;margin-bottom:6px;">Step 2 of 2</p>
         <h1 style="font-size:24px;font-weight:800;margin-bottom:6px;">Your Preferences</h1>
         <p style="font-size:14px;color:var(--text-secondary);">
-          Customize who you want to talk to.
+          Customize your matching experience.
         </p>
       </div>
 
-      <!-- Year Dropdown -->
-      <div style="margin-top:var(--space-xl);animation:fadeUp 0.4s 0.2s var(--ease-out) both;">
-        <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
-          <span>Connect with which year?</span>
-          <span style="font-size:11px;font-weight:400;color:var(--text-muted);">(Priority)</span>
-        </div>
-        
-        <div class="select-wrapper">
-          <select id="year-select" class="styled-select">
-            <option value="any">Any Year (Recommended)</option>
-            <option value="1">1st Year Students</option>
-            <option value="2">2nd Year Students</option>
-            <option value="3">3rd Year Students</option>
-            <option value="4">4th Year Students</option>
-          </select>
-          <div class="select-chevron">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
-            </svg>
+      <div class="card" style="margin-top:var(--space-xl);animation:fadeUp 0.4s 0.2s var(--ease-out) both;">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Prefer same year</div>
+            <div class="toggle-sub">Match with ${profile.yearLabel} students first</div>
           </div>
+          <label class="toggle">
+            <input type="checkbox" id="pref-same-year" checked />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-      </div>
 
-      <div class="card" style="margin-top:var(--space-xl);animation:fadeUp 0.4s 0.3s var(--ease-out) both;">
         <div class="toggle-row">
           <div class="toggle-info">
             <div class="toggle-label">Prefer opposite gender</div>
@@ -69,15 +56,15 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
       <!-- Info note -->
       <div style="margin-top:var(--space-md);padding:12px 14px;
         background:var(--accent-dim);border:1px solid var(--border-glow);border-radius:var(--radius-md);
-        animation:fadeUp 0.4s 0.4s var(--ease-out) both;">
+        animation:fadeUp 0.4s 0.3s var(--ease-out) both;">
         <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;">
-          🔒 All chats are 100% anonymous and private by default.
+          🔒 You stay anonymous unless <em>both</em> of you choose to reveal.
         </p>
       </div>
 
       <div style="flex:1;min-height:var(--space-xl);"></div>
 
-      <div style="animation:fadeUp 0.4s 0.5s var(--ease-out) both;">
+      <div style="animation:fadeUp 0.4s 0.4s var(--ease-out) both;">
         <button class="btn btn-primary" id="start-btn">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -90,20 +77,13 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
   `;
   el.appendChild(body);
 
-  const yearSelect = el.querySelector('#year-select');
-
-  yearSelect.addEventListener('change', (e) => {
-    try { navigator.vibrate(8); } catch (_) {}
-    prefs.targetYear = e.target.value === 'any' ? 'any' : parseInt(e.target.value);
+  el.querySelector('#pref-same-year').addEventListener('change', e => {
+    prefs.sameYear = e.target.checked;
   });
-
   el.querySelector('#pref-opp-gender').addEventListener('change', e => {
     prefs.oppositeGender = e.target.checked;
   });
-
-  el.querySelector('#start-btn').addEventListener('click', () => {
-    onStart(prefs);
-  });
+  el.querySelector('#start-btn').addEventListener('click', () => onStart(prefs));
 
   return el;
 }

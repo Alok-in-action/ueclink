@@ -37,36 +37,15 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
           <span style="font-size:11px;font-weight:400;color:var(--text-muted);">(Priority)</span>
         </div>
         
-        <div style="position:relative;">
-          <select id="year-select" style="
-            width: 100%;
-            height: 52px;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            color: var(--text-primary);
-            padding: 0 16px;
-            font-size: 15px;
-            font-weight: 600;
-            appearance: none;
-            cursor: pointer;
-            outline: none;
-            transition: border-color 0.2s;
-          ">
+        <div class="select-wrapper">
+          <select id="year-select" class="styled-select">
             <option value="any">Any Year (Recommended)</option>
             <option value="1">1st Year Students</option>
             <option value="2">2nd Year Students</option>
             <option value="3">3rd Year Students</option>
             <option value="4">4th Year Students</option>
           </select>
-          <div style="
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
-            color: var(--text-muted);
-          ">
+          <div class="select-chevron">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
             </svg>

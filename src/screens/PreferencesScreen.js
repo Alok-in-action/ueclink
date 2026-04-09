@@ -5,7 +5,7 @@
 import { NavHeader } from '../ui/NavHeader.js';
 
 export function PreferencesScreen({ profile, onStart, onBack }) {
-  // targetYear: 'any', 1, 2, 3, 4, 5
+  // targetYear: 'any', 1, 2, 3, 4
   const prefs = { targetYear: 'any', oppositeGender: false };
 
   const el = document.createElement('div');
@@ -30,24 +30,47 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
         </p>
       </div>
 
-      <!-- Year Selector -->
+      <!-- Year Dropdown -->
       <div style="margin-top:var(--space-xl);animation:fadeUp 0.4s 0.2s var(--ease-out) both;">
         <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
           <span>Connect with which year?</span>
           <span style="font-size:11px;font-weight:400;color:var(--text-muted);">(Priority)</span>
         </div>
         
-        <div class="year-selector-grid" style="
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        ">
-          <div class="year-chip selected" data-value="any">Any</div>
-          <div class="year-chip" data-value="1">1st Year</div>
-          <div class="year-chip" data-value="2">2nd Year</div>
-          <div class="year-chip" data-value="3">3rd Year</div>
-          <div class="year-chip" data-value="4">4th Year</div>
-          <div class="year-chip" data-value="5">5th Year</div>
+        <div style="position:relative;">
+          <select id="year-select" style="
+            width: 100%;
+            height: 52px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            padding: 0 16px;
+            font-size: 15px;
+            font-weight: 600;
+            appearance: none;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+          ">
+            <option value="any">Any Year (Recommended)</option>
+            <option value="1">1st Year Students</option>
+            <option value="2">2nd Year Students</option>
+            <option value="3">3rd Year Students</option>
+            <option value="4">4th Year Students</option>
+          </select>
+          <div style="
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-muted);
+          ">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -88,14 +111,11 @@ export function PreferencesScreen({ profile, onStart, onBack }) {
   `;
   el.appendChild(body);
 
-  // Selector logic
-  el.querySelectorAll('.year-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      try { navigator.vibrate(8); } catch (_) {}
-      el.querySelectorAll('.year-chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-      prefs.targetYear = chip.dataset.value === 'any' ? 'any' : parseInt(chip.dataset.value);
-    });
+  const yearSelect = el.querySelector('#year-select');
+
+  yearSelect.addEventListener('change', (e) => {
+    try { navigator.vibrate(8); } catch (_) {}
+    prefs.targetYear = e.target.value === 'any' ? 'any' : parseInt(e.target.value);
   });
 
   el.querySelector('#pref-opp-gender').addEventListener('change', e => {

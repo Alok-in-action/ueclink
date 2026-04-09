@@ -81,29 +81,27 @@ export function AdminScreen({ onBack }) {
     for (const sid of sorted) {
       const sess = data[sid];
       const uids = Object.keys(sess.users || {});
+      const userA = uids[0] || 'Unknown';
+      const userB = uids[1] || 'Unknown';
+
       const card = document.createElement('div');
       card.className = 'card';
       card.style.cssText = 'padding:16px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);';
       
-      const userA = uids[0] || 'Unknown';
-      const userB = uids[1] || 'Unknown';
-      
-      // Attempt to resolve names (async)
-      const nameA = await resolveName(userA);
-      const nameB = await resolveName(userB);
+      const timeStr = sess.createdAt ? new Date(sess.createdAt).toLocaleTimeString() : 'Recent';
 
       card.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;">
           <div style="font-size:14px;font-weight:500;">
             <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--accent-bright);">●</span> ${nameA}
+              <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userA}">${userA}</span>
             </div>
             <div style="margin:4px 0;opacity:0.3;font-size:10px;">MATCHED WITH</div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:var(--accent-bright);">●</span> ${nameB}
+              <span style="color:var(--accent-bright);">●</span> <span class="name-label" data-uid="${userB}">${userB}</span>
             </div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);">${new Date(sess.createdAt).toLocaleTimeString()}</div>
+          <div style="font-size:11px;color:var(--text-muted);">${timeStr}</div>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-primary btn-sm view-chat" data-sid="${sid}">Moderate Chat</button>
@@ -111,11 +109,25 @@ export function AdminScreen({ onBack }) {
         </div>
       `;
 
-      card.querySelector('.view-chat').addEventListener('click', () => openPreview(sid, nameA, nameB));
+      card.querySelector('.view-chat').addEventListener('click', () => {
+        const labels = card.querySelectorAll('.name-label');
+        openPreview(sid, labels[0].textContent, labels[1].textContent);
+      });
       card.querySelector('.end-chat').addEventListener('click', () => doEndSession(sid));
 
       sessionsList.appendChild(card);
+
+      // Lazy resolve names in background
+      resolveName(userA).then(name => {
+        const label = card.querySelector(`[data-uid="${userA}"]`);
+        if (label) label.textContent = name;
+      });
+      resolveName(userB).then(name => {
+        const label = card.querySelector(`[data-uid="${userB}"]`);
+        if (label) label.textContent = name;
+      });
     }
+
   });
 
   async function resolveName(uid) {

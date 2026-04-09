@@ -161,12 +161,9 @@ function goToChat(sessionId, partnerId) {
   showScreen(screen);
 }
 
-function goToPostChat(sessionId) {
+function goToPostChat() {
   cleanup();
   const screen = PostChatScreen({
-    myUserId:  currentUser.uid,
-    sessionId,
-    myProfile: userProfile,
     onFindNew: () => goToPreferences(),
   });
   activeCleanup = () => { if (screen._cleanup) screen._cleanup(); };

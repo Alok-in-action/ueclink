@@ -38,9 +38,18 @@ export function AdminScreen({ onBack }) {
       </div>
     </div>
 
+    <!-- Debug Inspector -->
+    <div id="admin-debug" style="margin-top:auto;padding:12px;background:#1a1a1a;border-radius:8px;font-family:monospace;font-size:10px;color:var(--text-muted);border:1px solid #333;">
+      <div style="color:var(--accent-bright);margin-bottom:4px;font-weight:bold;">CONNECTION DEBUG:</div>
+      <div id="debug-status">Initializing...</div>
+      <div id="debug-auth">Auth: Checking...</div>
+      <div id="debug-db">DB Path: sessions/</div>
+    </div>
+
     <!-- Live Preview Overlay (hidden by default) -->
     <div id="chat-preview" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;
                   backdrop-filter:blur(8px);padding:var(--space-md);flex-direction:column;gap:16px;">
+
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <h3 id="preview-title" style="font-size:16px;font-weight:700;">Chat Preview</h3>
         <button id="close-preview" class="btn btn-ghost btn-sm">Close</button>
@@ -61,10 +70,22 @@ export function AdminScreen({ onBack }) {
   const nameCache = new Map();
   let currentPreviewSessionId = null;
 
+  // --- Debug Logic ---
+  const debugStatus = el.querySelector('#debug-status');
+  const debugAuth   = el.querySelector('#debug-auth');
+  const user = auth.currentUser;
+  if (user) {
+    debugAuth.textContent = `Auth: ${user.email} (${user.uid})`;
+  }
+
   // --- Session Monitor ---
   const sessionsRef = ref(rtdb, 'sessions');
   const sessionUnsub = onValue(sessionsRef, async (snap) => {
+    debugStatus.textContent = 'Status: Connected (Listening)';
+    debugStatus.style.color = 'var(--success)';
+    
     const data = snap.val() || {};
+
     const sessionIds = Object.keys(data);
     countEl.textContent = sessionIds.length;
 
@@ -142,7 +163,10 @@ export function AdminScreen({ onBack }) {
 
   }, (error) => {
     console.error('[Admin] session error:', error);
+    debugStatus.textContent = `Status Error: ${error.code || error.message}`;
+    debugStatus.style.color = 'var(--danger)';
     sessionsList.innerHTML = `
+
       <div style="padding:40px;text-align:center;color:var(--danger);">
         <div style="font-size:32px;margin-bottom:12px;">🚫</div>
         <div style="font-weight:700;">Connection Error</div>

@@ -16,14 +16,14 @@ const QUEUE = 'matchingQueue';
 export async function enterQueue(profile, prefs) {
   const ref = doc(db, QUEUE, profile.userId);
   await setDoc(ref, {
-    userId:    profile.userId,
-    year:      profile.currentYear || 1,
-    gender:    profile.gender || 'unknown',
-    sameYear:  prefs.sameYear ?? true,
-    oppGender: prefs.oppositeGender ?? false,
-    status:    'waiting',
-    locked:    false,
-    timestamp: serverTimestamp(),
+    userId:     profile.userId,
+    year:       profile.currentYear || 1,
+    gender:     profile.gender || 'unknown',
+    targetYear: prefs.targetYear || 'any',
+    oppGender:  prefs.oppositeGender ?? false,
+    status:     'waiting',
+    locked:     false,
+    timestamp:  serverTimestamp(),
   });
   console.log('[Queue] entered queue:', profile.userId);
 }
@@ -78,8 +78,21 @@ export async function tryMatch(userId, profile, prefs) {
     // Sort by preference match score
     const scored = candidates.map(c => {
       let score = 0;
-      if (prefs.sameYear && c.year === profile.currentYear) score += 2;
-      if (prefs.oppositeGender && c.gender !== profile.gender) score += 1;
+      
+      // I am looking for a specific year
+      if (prefs.targetYear !== 'any' && c.year === prefs.targetYear) {
+        score += 3; // strong match
+      }
+      
+      // They are looking for my year
+      if (c.targetYear !== 'any' && c.targetYear === profile.currentYear) {
+        score += 2;
+      }
+      
+      if (prefs.oppositeGender && c.gender !== profile.gender) {
+        score += 1;
+      }
+      
       return { ...c, score };
     }).sort((a, b) => b.score - a.score);
 

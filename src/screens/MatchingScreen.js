@@ -62,12 +62,19 @@ export function MatchingScreen({ profile, prefs, onMatched, onCancel }) {
 
       <!-- Prefs badges -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-        ${prefs.sameYear ? `<div class="chip" style="background:var(--accent-dim);border:1px solid var(--border-glow);color:var(--accent-bright);">Same Year</div>` : ''}
+        <div class="chip" style="background:var(--accent-dim);border:1px solid var(--border-glow);color:var(--accent-bright);">
+          ${prefs.targetYear === 'any' ? 'Any Year' : `${prefs.targetYear}${getOrdinal(prefs.targetYear)} Year`}
+        </div>
         ${prefs.oppositeGender ? `<div class="chip" style="background:var(--accent-dim);border:1px solid var(--border-glow);color:var(--accent-bright);">Opposite Gender</div>` : ''}
       </div>
     </div>
   `;
   el.appendChild(body);
+
+  function getOrdinal(n) {
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return (s[(v - 20) % 10] || s[v] || s[0]);
+  }
 
   // Online count
   getOnlineCount().then(n => {

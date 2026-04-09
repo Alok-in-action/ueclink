@@ -1,11 +1,10 @@
 // ============================================================
-// Chat Screen — full real-time chat interface
+// Chat Screen — Immersive full-screen real-time chat
 // ============================================================
 
 import {
   sendMessage, listenMessages, setTyping, listenTyping,
   listenSessionStatus, endSession, markDelivered,
-  setReveal, listenReveal,
 } from '../chat/session.js';
 import { submitReport } from '../reports/report.js';
 import { showToast } from '../ui/toast.js';
@@ -13,84 +12,90 @@ import { showModal, hideModal } from '../ui/modal.js';
 
 export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const el = document.createElement('div');
-  el.style.cssText = 'display:flex;flex-direction:column;height:100%;';
+  el.style.cssText = 'display:flex;flex-direction:column;height:100vh;height:100dvh;background:var(--bg-base);overflow:hidden;';
 
   el.innerHTML = `
-    <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-base);">
+    <!-- Header -->
+    <div style="
+      padding: calc(var(--safe-top) + 12px) var(--space-md) 12px;
+      background: rgba(10, 10, 12, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      z-index: 50;">
 
-      <!-- Header -->
-      <div style="
-        padding: calc(var(--safe-top) + 14px) var(--space-md) 14px;
-        background:var(--bg-card);
-        border-bottom:1px solid var(--border);
-        display:flex;align-items:center;gap:12px;
-        position:sticky;top:0;z-index:10;">
-
-        <div style="width:40px;height:40px;border-radius:50%;
-          background:var(--accent-dim);border:2px solid var(--border-glow);
-          display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
-          👤
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:700;">Stranger</div>
-          <div style="font-size:12px;color:var(--success);">● Connected · ${partnerYearLabel || 'UEC Student'}</div>
-        </div>
-        <button id="report-btn" style="background:none;border:none;cursor:pointer;padding:6px;
-          color:var(--text-muted);border-radius:var(--radius-sm);transition:color 0.15s;">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-          </svg>
-        </button>
+      <div style="width:38px; height:38px; border-radius:50%;
+        background: var(--accent-dim); border: 2px solid var(--border-glow);
+        display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+        👤
       </div>
-
-      <!-- Messages -->
-      <div id="messages-area" style="flex:1;overflow-y:auto;padding:16px 12px;
-        display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain;
-        -webkit-overflow-scrolling:touch;">
-        <!-- intro tip -->
-        <div style="text-align:center;margin:8px 0 16px;">
-          <span style="font-size:12px;color:var(--text-muted);
-            background:var(--bg-card);padding:6px 14px;border-radius:var(--radius-full);
-            border:1px solid var(--border);">
-            You're anonymously connected. Say hi! 👋
-          </span>
+      <div style="flex: 1;">
+        <div style="font-size: 15px; font-weight: 700; color: var(--text-primary);">Stranger</div>
+        <div style="font-size: 11px; color: var(--success); display: flex; align-items: center; gap: 4px;">
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
+          ${partnerYearLabel || 'Verified Student'}
         </div>
       </div>
+      
+      <button id="end-chat-top" style="
+        background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--danger); cursor: pointer;">
+        End
+      </button>
 
-      <!-- Typing indicator slot -->
-      <div id="typing-slot" style="padding:0 12px 4px;min-height:32px;"></div>
+      <button id="report-btn" style="background:none; border:none; cursor:pointer; padding:6px; color:var(--text-muted);">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+        </svg>
+      </button>
+    </div>
 
-      <!-- Action bar -->
-      <div style="display:flex;gap:8px;padding:8px 12px 0;border-top:1px solid var(--border);
-        background:var(--bg-base);">
-        <button class="btn btn-ghost btn-sm" id="skip-btn" style="flex:1;min-height:38px;font-size:13px;">
-          Skip
-        </button>
-        <button class="btn btn-danger btn-sm" id="end-btn" style="flex:1;min-height:38px;font-size:13px;">
-          End Chat
-        </button>
+    <!-- Messages -->
+    <div id="messages-area" style="
+      flex: 1; overflow-y: auto; padding: 20px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      overscroll-behavior: contain; -webkit-overflow-scrolling: touch;">
+      
+      <div style="text-align: center; margin-bottom: 24px;">
+        <p style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+          Start of private conversation
+        </p>
       </div>
+    </div>
 
-      <!-- Input bar -->
-      <div class="input-bar" id="input-bar">
-        <textarea class="input-field" id="msg-input" rows="1"
-          placeholder="Type a message…" style="min-height:44px;"></textarea>
-        <button class="send-btn" id="send-btn">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+    <!-- Typing & Input -->
+    <div id="bottom-container" style="
+      background: var(--bg-base); border-top: 1px solid var(--border);
+      padding: 12px 14px 24px; transition: padding 0.2s ease;">
+      
+      <div id="typing-slot" style="min-height: 20px; margin-bottom: 8px;"></div>
+
+      <div style="display: flex; align-items: flex-end; gap: 10px;">
+        <div style="flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 24px; padding: 4px 16px; display: flex; align-items: flex-end;">
+          <textarea id="msg-input" 
+            placeholder="Type a message..." 
+            style="flex: 1; background: none; border: none; outline: none; padding: 10px 0; max-height: 120px; font-size: 15px; color: var(--text-primary); resize: none;"></textarea>
+        </div>
+        <button id="send-btn" style="
+          width: 44px; height: 44px; border-radius: 50%;
+          background: var(--accent); border: none; color: #fff;
+          display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+          transition: transform 0.1s; -webkit-tap-highlight-color: transparent;">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"/>
           </svg>
         </button>
       </div>
     </div>
   `;
 
-  const messagesArea = el.querySelector('#messages-area');
-  const msgInput     = el.querySelector('#msg-input');
-  const sendBtn      = el.querySelector('#send-btn');
-  const typingSlot   = el.querySelector('#typing-slot');
-  const inputBar     = el.querySelector('#input-bar');
+  const messagesArea   = el.querySelector('#messages-area');
+  const msgInput       = el.querySelector('#msg-input');
+  const sendBtn        = el.querySelector('#send-btn');
+  const typingSlot     = el.querySelector('#typing-slot');
+  const bottomContainer = el.querySelector('#bottom-container');
 
   let userScrolledUp = false;
   let typingTimer    = null;
@@ -98,14 +103,14 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   let sessionEnded   = false;
   let seenKeys       = new Set();
 
-  // --- Auto-scroll logic ---
+  // --- Auto-scroll ---
   messagesArea.addEventListener('scroll', () => {
     const atBottom = messagesArea.scrollHeight - messagesArea.scrollTop - messagesArea.clientHeight < 60;
     userScrolledUp = !atBottom;
   });
   const scrollToBottom = (force = false) => {
     if (!userScrolledUp || force) {
-      messagesArea.scrollTo({ top: messagesArea.scrollHeight, behavior: 'smooth' });
+      messagesArea.scrollTop = messagesArea.scrollHeight;
     }
   };
 
@@ -113,7 +118,6 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const renderMessages = (msgs) => {
     msgs.forEach(msg => {
       if (seenKeys.has(msg.key)) {
-        // Update delivery ticks if already rendered
         const tick = el.querySelector(`[data-key="${msg.key}"] .bubble-tick`);
         if (tick && msg.delivered) tick.classList.add('delivered');
         return;
@@ -123,24 +127,16 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
 
       const wrapper = document.createElement('div');
       wrapper.dataset.key = msg.key;
-      wrapper.style.cssText = `display:flex;flex-direction:column;${isMine ? 'align-items:flex-end;' : 'align-items:flex-start;'}`;
-
-      const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+      wrapper.style.cssText = `display:flex; flex-direction:column; ${isMine ? 'align-items:flex-end;' : 'align-items:flex-start;'}`;
 
       wrapper.innerHTML = `
-        <div class="chat-bubble ${isMine ? 'mine' : 'theirs'}">
+        <div class="chat-bubble ${isMine ? 'mine' : 'theirs'}" style="margin-bottom: 2px;">
           ${escapeHtml(msg.text)}
-          ${isMine ? `
-            <div class="bubble-meta">
-              <span class="bubble-time">${time}</span>
-              <span class="bubble-tick ${msg.delivered ? 'delivered' : ''}">✓✓</span>
-            </div>
-          ` : `<div class="bubble-meta"><span class="bubble-time" style="color:var(--text-muted);">${time}</span></div>`}
+          ${isMine ? `<div class="bubble-tick ${msg.delivered ? 'delivered' : ''}" style="font-size: 10px; opacity: 0.6; text-align: right; margin-top: 4px;">✓✓</div>` : ''}
         </div>
       `;
       messagesArea.appendChild(wrapper);
 
-      // Mark as delivered if it's from partner
       if (!isMine && msg.key && !msg.delivered) {
         markDelivered(sessionId, msg.key);
       }
@@ -148,21 +144,15 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     scrollToBottom();
   };
 
-  // --- Listen messages ---
   cleanups.push(listenMessages(sessionId, renderMessages));
 
-  // --- Listen typing ---
   cleanups.push(listenTyping(sessionId, myUserId, (isTyping) => {
-    typingSlot.innerHTML = isTyping
-      ? `<div class="typing-indicator" style="margin-left:12px;">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>`
+    typingSlot.innerHTML = isTyping 
+      ? `<div style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">Stranger is typing...</div>` 
       : '';
+    if (isTyping) scrollToBottom();
   }));
 
-  // --- Listen session status ---
   cleanups.push(listenSessionStatus(sessionId, (status) => {
     if (status === 'ended' && !sessionEnded) {
       sessionEnded = true;
@@ -170,7 +160,6 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     }
   }));
 
-  // --- Send message ---
   const doSend = async () => {
     const text = msgInput.value.trim();
     if (!text || sessionEnded) return;
@@ -182,37 +171,19 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   };
 
   sendBtn.addEventListener('click', doSend);
-  msgInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
-  });
-
-  // --- Typing indicator ---
   msgInput.addEventListener('input', () => {
-    // Auto-grow
     msgInput.style.height = 'auto';
     msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
-
     setTyping(sessionId, myUserId, true);
     clearTimeout(typingTimer);
     typingTimer = setTimeout(() => setTyping(sessionId, myUserId, false), 1500);
   });
 
-  // --- Skip ---
-  el.querySelector('#skip-btn').addEventListener('click', () => {
-    doEndSession(true);
+  el.querySelector('#end-chat-top').addEventListener('click', () => {
+    if (confirm('End this conversation?')) doEndSession();
   });
 
-  // --- End Chat ---
-  el.querySelector('#end-btn').addEventListener('click', () => {
-    doEndSession(false);
-  });
-
-  // --- Report ---
-  el.querySelector('#report-btn').addEventListener('click', () => {
-    showReportModal();
-  });
-
-  const doEndSession = async (isSkip) => {
+  const doEndSession = async () => {
     if (sessionEnded) return;
     sessionEnded = true;
     cleanup();
@@ -222,61 +193,44 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
 
   const showPartnerLeft = () => {
     msgInput.disabled = true;
-    sendBtn.disabled = true;
+    sendBtn.style.opacity = '0.5';
     const banner = document.createElement('div');
-    banner.style.cssText = `text-align:center;padding:10px;`;
-    banner.innerHTML = `
-      <span style="font-size:13px;color:var(--text-muted);
-        background:var(--bg-card);padding:6px 14px;border-radius:var(--radius-full);
-        border:1px solid var(--border);">
-        Stranger has left the chat.
-      </span>`;
+    banner.style.cssText = `text-align:center; padding: 20px;`;
+    banner.innerHTML = `<span style="font-size:12px; color:var(--text-muted);">Stranger has left the chat.</span>`;
     messagesArea.appendChild(banner);
     scrollToBottom(true);
-
-    // Show end options
-    setTimeout(() => onEnd({ sessionId, partnerYearLabel }), 2500);
+    setTimeout(() => onEnd({ sessionId, partnerYearLabel }), 2000);
   };
 
-  const showReportModal = () => {
-    const reasons = ['Spam', 'Inappropriate Content', 'Harassment', 'Other'];
+  el.querySelector('#report-btn').addEventListener('click', () => {
+    const reasons = ['Harassment', 'Spam', 'Inappropriate', 'Underage'];
     const content = `
       <div class="modal-handle"></div>
-      <h2 style="font-size:18px;font-weight:700;margin-bottom:6px;">Report User</h2>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:var(--space-lg);">
-        Select a reason for the report:
-      </p>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        ${reasons.map(r => `
-          <button class="btn btn-ghost btn-sm report-reason" data-reason="${r}"
-            style="justify-content:flex-start;border-radius:var(--radius-md);">${r}</button>
-        `).join('')}
+      <h2 style="font-size:18px; font-weight:700; margin-bottom:12px;">Report Stranger</h2>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${reasons.map(r => `<button class="btn btn-ghost report-reason" data-reason="${r}" style="justify-content:flex-start;">${r}</button>`).join('')}
       </div>
-      <button class="btn btn-ghost btn-sm" id="cancel-report" style="margin-top:12px;">Cancel</button>
     `;
     showModal(content, (modalEl) => {
       modalEl.querySelectorAll('.report-reason').forEach(btn => {
         btn.addEventListener('click', async () => {
           hideModal();
           await submitReport(myUserId, 'partner', sessionId, btn.dataset.reason);
-          showToast('Report submitted. Thank you.', 'success');
+          showToast('User reported.', 'success');
         });
       });
-      modalEl.querySelector('#cancel-report').addEventListener('click', hideModal);
     });
-  };
+  });
 
   const cleanup = () => {
     cleanups.forEach(fn => fn());
     clearTimeout(typingTimer);
-    setTyping(sessionId, myUserId, false);
   };
 
-  // Keyboard viewport fix for mobile
   if (window.visualViewport) {
     const onResize = () => {
       const offset = window.innerHeight - window.visualViewport.height;
-      inputBar.style.paddingBottom = `${Math.max(offset, 0) + 16}px`;
+      bottomContainer.style.paddingBottom = `${Math.max(offset, 0) + 12}px`;
       scrollToBottom();
     };
     window.visualViewport.addEventListener('resize', onResize);
@@ -288,10 +242,5 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
 }
 
 function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }

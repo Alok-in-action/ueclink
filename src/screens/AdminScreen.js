@@ -37,7 +37,7 @@ export function AdminScreen({ onBack }) {
     <div id="active-section">
       <h2 style="font-size:15px; font-weight:700; margin:0 0 12px 4px; display:flex; align-items:center; gap:8px; color:var(--success);">
         <span style="width:8px;height:8px;background:var(--success);border-radius:50%;box-shadow:0 0 8px var(--success);"></span>
-        Currently Live
+        Currently Live <span id="active-count-badge" style="opacity:0.6; font-weight:400; font-size:14px;">(0)</span>
       </h2>
       <div id="active-sessions-list" style="display:flex; flex-direction:column; gap:12px;">
         <div style="padding:30px; text-align:center; color:var(--text-muted); font-size:13px;">No active matches right now.</div>
@@ -47,12 +47,13 @@ export function AdminScreen({ onBack }) {
     <div id="ended-section" style="margin-top:8px;">
       <h2 style="font-size:15px; font-weight:700; margin:0 0 12px 4px; display:flex; align-items:center; gap:8px; opacity:0.6;">
         <span style="width:8px;height:8px;background:var(--text-muted);border-radius:50%;"></span>
-        Recently Ended
+        Recently Ended <span id="ended-count-badge" style="opacity:0.6; font-weight:400; font-size:14px;">(0)</span>
       </h2>
       <div id="ended-sessions-list" style="display:flex; flex-direction:column; gap:12px;">
         <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>
       </div>
     </div>
+
   `;
 
   // Live Preview Overlay
@@ -84,13 +85,16 @@ export function AdminScreen({ onBack }) {
   const sessionUnsub = onValue(sessionsRef, async (snap) => {
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
-    countEl.textContent = sessionIds.length;
-
+    
+    // Initial clearing
     activeList.innerHTML = '';
     endedList.innerHTML = '';
 
     if (sessionIds.length === 0) {
+      countEl.textContent = '0';
       activeList.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted); font-size:13px;">No active matches right now.</div>`;
+      el.querySelector('#active-count-badge').textContent = ' (0)';
+      el.querySelector('#ended-count-badge').textContent = ' (0)';
       return;
     }
 
@@ -103,8 +107,8 @@ export function AdminScreen({ onBack }) {
     for (const sid of sorted) {
       const sess = data[sid];
       const isEnded = sess.status === 'ended';
-      
       const card = createSessionCard(sid, sess, isEnded);
+      
       if (isEnded) {
         endedList.appendChild(card);
         endedCount++;
@@ -114,10 +118,16 @@ export function AdminScreen({ onBack }) {
       }
     }
 
+    // Update Counts
+    countEl.textContent = activeCount;
+    el.querySelector('#active-count-badge').textContent = ` (${activeCount})`;
+    el.querySelector('#ended-count-badge').textContent = ` (${endedCount})`;
+
     if (activeCount === 0) activeList.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted); font-size:13px;">No active matches right now.</div>`;
     if (endedCount === 0) endedList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>`;
 
   }, (err) => {
+
     console.error('[Admin] Database error:', err);
     activeList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">Permission Denied</div>`;
   });

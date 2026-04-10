@@ -50,8 +50,17 @@ export function parseUECEmail(email) {
   if (!match) return null;
 
   const [, , branchCode, yearShort, ] = match;
+  
+  // ── Block specific batches & users ───────────────────────
+  const blockedRolls  = ['0701cm201007'];
+  const blockedYears  = ['20', '21']; // 2020 and 2021 admission
+  if (blockedRolls.includes(roll) || blockedYears.includes(yearShort)) {
+    return { isBlocked: true };
+  }
+
   const branchName    = BRANCH_MAP[branchCode] || branchCode.toUpperCase();
   const admissionYear = 2000 + parseInt(yearShort, 10);
+
 
   // Indian academic year starts in July.
   // Jan–June belongs to the academic year that started the PREVIOUS calendar year.

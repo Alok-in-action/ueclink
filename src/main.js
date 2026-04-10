@@ -63,6 +63,13 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     return;
   }
 
+  if (parsed.isBlocked) {
+    showToast('Access restricted to 1st–4th year students.', 'error', 6000);
+    await signOut(auth);
+    return;
+  }
+
+
   userProfile = {
     userId:      firebaseUser.uid,
     displayName: firebaseUser.displayName || '',

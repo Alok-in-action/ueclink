@@ -21,15 +21,22 @@ export function AdminScreen({ onBack }) {
   main.style.cssText = 'flex:1;overflow-y:auto;padding:var(--space-md);display:flex;flex-direction:column;gap:24px;';
   
   main.innerHTML = `
-    <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid var(--border-glow); margin-bottom:12px;">
-      <div class="card" style="flex:1; min-width:140px; padding:16px; text-align:center; background:var(--bg-card-2);">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Active Chats</div>
-        <div id="active-chats-count" style="font-size:24px; font-weight:800; color:var(--accent-bright);">0</div>
+    <div style="padding:0 4px; margin-bottom:12px;">
+      <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; background:linear-gradient(135deg, var(--bg-card-2) 0%, #1e1b4b 100%); border:1px solid var(--accent-glow); box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:8px; font-weight:700;">Live Community Pulse</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div id="active-chats-count" style="font-size:42px; font-weight:900; color:var(--accent-bright); line-height:1; text-shadow:0 0 20px var(--accent-glow);">0</div>
+          <div style="text-align:left;">
+            <div style="font-size:16px; font-weight:700; color:var(--text-primary);">Active Chats</div>
+            <div style="font-size:12px; color:var(--success); border-top:1px solid rgba(255,255,255,0.05); margin-top:4px; padding-top:4px;">● Live Monitoring</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div style="margin-top:12px;">
-      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+    <div style="margin-top:8px;">
+      <h2 style="font-size:15px; font-weight:700; margin:16px 0 12px 4px; display:flex; align-items:center; gap:8px; opacity:0.8;">
+
         <span style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></span>
         Live Sessions
       </h2>

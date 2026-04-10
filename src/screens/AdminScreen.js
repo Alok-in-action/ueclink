@@ -146,15 +146,16 @@ export function AdminScreen({ onBack }) {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div style="font-size:13px; font-weight:500;">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
-            <span class="name-label" data-uid="${userA}">${userA}</span>
-          </div>
-          <div style="margin:4px 0; opacity:0.3; font-size:9px;">MATCHED WITH</div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
-            <span class="name-label" data-uid="${userB}">${userB}</span>
-          </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
+              <div class="name-label" data-uid="${userA}" style="line-height:1.2;">${userA}</div>
+            </div>
+            <div style="margin:6px 0 6px 14px; opacity:0.3; font-size:8px; font-weight:700;">🤝 MATCHED WITH</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
+              <div class="name-label" data-uid="${userB}" style="line-height:1.2;">${userB}</div>
+            </div>
+
         </div>
         <div style="font-size:10px; color:var(--text-muted);">${timeStr}</div>
       </div>
@@ -166,39 +167,60 @@ export function AdminScreen({ onBack }) {
 
     card.querySelector('.view-chat').addEventListener('click', () => {
       const labels = card.querySelectorAll('.name-label');
-      openPreview(sid, labels[0].textContent, labels[1].textContent);
+      // Extract first child (name) text or fallback
+      const nameA = labels[0].querySelector('div:first-child')?.textContent || 'User A';
+      const nameB = labels[1].querySelector('div:first-child')?.textContent || 'User B';
+      openPreview(sid, nameA, nameB);
     });
+
     
     const killBtn = card.querySelector('.end-chat');
     if (killBtn) killBtn.addEventListener('click', () => doEndSession(sid));
 
-    // Lazy resolve names
-    resolveName(userA).then(name => {
+    // Lazy resolve full info
+    resolveUserInfo(userA).then(info => {
       const label = card.querySelector(`[data-uid="${userA}"]`);
-      if (label) label.textContent = name;
+      if (label) {
+        label.innerHTML = `
+          <div style="font-weight:700; color:var(--text-primary);">${info.name}</div>
+          <div style="font-size:10px; color:var(--text-muted);">${info.rollNo} • <span style="font-family:monospace; opacity:0.7;">${userA.slice(0,8)}...</span></div>
+        `;
+      }
     });
-    resolveName(userB).then(name => {
+    resolveUserInfo(userB).then(info => {
       const label = card.querySelector(`[data-uid="${userB}"]`);
-      if (label) label.textContent = name;
+      if (label) {
+        label.innerHTML = `
+          <div style="font-weight:700; color:var(--text-primary);">${info.name}</div>
+          <div style="font-size:10px; color:var(--text-muted);">${info.rollNo} • <span style="font-family:monospace; opacity:0.7;">${userB.slice(0,8)}...</span></div>
+        `;
+      }
     });
 
     return card;
   }
 
-  async function resolveName(uid) {
-    if (!uid || uid === 'Unknown') return uid;
+  async function resolveUserInfo(uid) {
+    if (!uid || uid === 'Unknown') return { name: uid, rollNo: '' };
     if (nameCache.has(uid)) return nameCache.get(uid);
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      const name = snap.exists() ? (snap.data().displayName || uid) : uid;
-      nameCache.set(uid, name);
-      return name;
-    } catch (_) { return uid; }
+      const data = snap.exists() ? snap.data() : null;
+      const info = {
+        name: data ? (data.displayName || 'Unknown Name') : 'Unknown User',
+        rollNo: data ? (data.rollNumber || 'No Roll') : 'N/A'
+      };
+      nameCache.set(uid, info);
+      return info;
+    } catch (_) { 
+      return { name: uid, rollNo: '' }; 
+    }
   }
 
   // --- Moderation ---
   let msgsUnsub = null;
   function openPreview(sid, nameA, nameB) {
+
     if (msgsUnsub) msgsUnsub();
     currentPreviewSessionId = sid;
     chatPreview.style.display = 'flex';

@@ -88,8 +88,12 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
   } catch (_) {}
 
-  // ── 3. Navigate immediately — no waiting ─────────────────────
-  // If admin, they go to Admin screen by default or can jump there
+  // ── 3. Initialize Presence (RTDB) ───────────────────────────
+  import('./presence/rtdbPresence.js').then(({ initPresence }) => {
+    initPresence(firebaseUser.uid, userProfile);
+  });
+
+  // ── 4. Navigate immediately ──────────────────────────────────
   if (parsed.isAdmin) {
     import('./screens/AdminScreen.js').then(({ AdminScreen }) => {
       showScreen(AdminScreen({ onBack: goToLanding }));
@@ -99,6 +103,7 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   } else {
     goToPreferences();
   }
+
 
 
   // ── 4. Background tasks (non-blocking, never delay UI) ───────

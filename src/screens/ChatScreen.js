@@ -1,5 +1,6 @@
 // ============================================================
-// Chat Screen — Final Fix for Keyboard Overlap & Accessibility
+// Chat Screen — Optimized for Perfect Keyboard Stability
+// & Dynamic Curiosity-Driven Headers
 // ============================================================
 
 import {
@@ -10,10 +11,32 @@ import { submitReport } from '../reports/report.js';
 import { showToast } from '../ui/toast.js';
 import { showModal, hideModal } from '../ui/modal.js';
 
+const HEADER_VARIATIONS = [
+  "someone from your college 👀",
+  "you might know them…",
+  "you’ve seen them before 👀",
+  "same campus, different story",
+  "they’re closer than you think",
+  "maybe from your class… 👀",
+  "same building maybe…",
+  "you crossed paths today",
+  "what if it’s your classmate…",
+  "a familiar stranger 👀",
+  "someone from your circle…",
+  "you might guess who this is",
+  "just one chat away…",
+  "someone interesting is here 👀",
+  "this could get interesting…",
+  "a random… but not really",
+  "you might regret skipping this 👀",
+  "someone is waiting for you…",
+  "this chat might surprise you 👀",
+  "not as random as you think",
+];
+
 export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const el = document.createElement('div');
   el.className = 'screen';
-  // Use a fixed flex container for the whole screen
   el.style.cssText = 'height:100dvh; display:flex; flex-direction:column; overflow:hidden; position:relative;';
 
   // State
@@ -21,6 +44,9 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   let seenKeys    = new Set();
   let typingTimer = null;
   let cleanups    = [];
+
+  // Random initial header index
+  let headerIdx = Math.floor(Math.random() * HEADER_VARIATIONS.length);
 
   el.innerHTML = `
     <div id="chat-container" style="display:flex;flex-direction:column;height:100%;width:100%;position:relative;overflow:hidden;">
@@ -41,11 +67,11 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
         </div>
         
         <div style="flex:1;">
-          <div style="font-size:15px;font-weight:700;color:var(--text-primary);">
-            ${partnerYearLabel || 'UEC Student'}
+          <div id="header-dynamic-text" style="font-size:15px;font-weight:700;color:var(--text-primary);transition:opacity 0.5s ease;">
+            ${HEADER_VARIATIONS[headerIdx]}
           </div>
           <div class="chat-hint">
-            ● Online now <span style="margin:0 4px;opacity:0.4;">·</span> you might know them 👀
+            ● Online now <span style="margin:0 4px;opacity:0.4;">·</span> stay curious 👀
           </div>
         </div>
 
@@ -67,7 +93,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
             backdrop-filter:blur(4px);border:1px solid var(--border);
             padding:12px 18px;border-radius:var(--radius-lg);">
             <p style="font-size:13px;color:var(--text-primary);line-height:1.5;margin-bottom:4px;">
-              ✨ You both are 2nd year.
+              ✨ You both are ${partnerYearLabel || 'matching'}.
             </p>
             <p style="font-size:12px;color:var(--text-secondary);">
               Try asking about internals 😄
@@ -93,7 +119,7 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
           <div style="flex:1;"></div>
           <button id="end-btn" style="background:none;border:none;color:var(--danger);
             font-size:12px;font-weight:600;padding:4px 8px;cursor:pointer;">
-            End Session
+            End Chat
           </button>
         </div>
 
@@ -116,8 +142,21 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   const msgInput      = el.querySelector('#msg-input');
   const sendBtn       = el.querySelector('#send-btn');
   const typingSlot    = el.querySelector('#typing-slot');
+  const headerText    = el.querySelector('#header-dynamic-text');
 
   let userScrolledUp = false;
+
+  // --- Header Rotation Logic ---
+  const rotateHeader = () => {
+    headerText.style.opacity = '0';
+    setTimeout(() => {
+      headerIdx = (headerIdx + 1) % HEADER_VARIATIONS.length;
+      headerText.textContent = HEADER_VARIATIONS[headerIdx];
+      headerText.style.opacity = '1';
+    }, 500);
+  };
+  const headerTimer = setInterval(rotateHeader, 6500);
+  cleanups.push(() => clearInterval(headerTimer));
 
   // --- Scroll Logic ---
   const scrollToBottom = (behavior = 'smooth') => {
@@ -163,26 +202,18 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     scrollToBottom();
   };
 
-  // --- THE FIX: Dynamic Container Resizing ---
+  // --- Viewport / Keyboard Sync ---
   const handleViewportChange = () => {
     if (!window.visualViewport) return;
-    
-    // Set the CONTAINER height to exactly the visible viewport height
-    // This forces Flexbox to shrink the messages-area and keep the input bar on screen
     const vh = window.visualViewport.height;
     chatContainer.style.height = `${vh}px`;
-    
-    // Safety check: sometimes iOS needs a tiny bit of help to avoid scroll-leak
     window.scrollTo(0, 0);
-    
-    // Always jump to bottom on resize to keep messages visible
     scrollToBottom('auto');
   };
 
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleViewportChange);
     window.visualViewport.addEventListener('scroll', handleViewportChange);
-    // Initial call to ensure everything is aligned
     handleViewportChange();
     cleanups.push(() => {
       window.visualViewport.removeEventListener('resize', handleViewportChange);
@@ -219,14 +250,10 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
     msgInput.value = '';
     msgInput.style.height = 'auto';
     setTyping(sessionId, myUserId, false);
-    
-    // Explicitly focus back to input for mobile keyboard stability
     msgInput.focus();
-
     await sendMessage(sessionId, myUserId, text);
     scrollToBottom('smooth');
   };
-
 
   sendBtn.addEventListener('click', (e) => {
     e.preventDefault();

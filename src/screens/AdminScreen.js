@@ -1,9 +1,9 @@
 // ============================================================
-// Admin Screen — Real-time monitoring & moderation
+// Admin Screen — Real-time monitoring, moderation & maintenance
 // ============================================================
 
 import { db, rtdb } from '../firebase.js';
-import { ref, onValue, off, update, remove } from 'firebase/database';
+import { ref, onValue, off, update, remove, get } from 'firebase/database';
 import { doc, getDoc } from 'firebase/firestore';
 import { NavHeader } from '../ui/NavHeader.js';
 import { showToast } from '../ui/toast.js';
@@ -31,6 +31,10 @@ export function AdminScreen({ onBack }) {
             <div style="font-size:12px; color:var(--success); border-top:1px solid rgba(255,255,255,0.05); margin-top:4px; padding-top:4px;">● Live Monitoring</div>
           </div>
         </div>
+        
+        <button id="purge-btn" class="btn btn-ghost btn-sm" style="margin-top:16px; min-height:32px; font-size:11px; color:var(--text-muted); border-color:rgba(255,255,255,0.1);">
+          🛡️ Purge 24h+ Old Data
+        </button>
       </div>
     </div>
 
@@ -53,7 +57,6 @@ export function AdminScreen({ onBack }) {
         <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>
       </div>
     </div>
-
   `;
 
   // Live Preview Overlay
@@ -76,6 +79,7 @@ export function AdminScreen({ onBack }) {
   const countEl      = el.querySelector('#active-chats-count');
   const previewMsgs  = el.querySelector('#preview-messages');
   const closePreview = el.querySelector('#close-preview');
+  const purgeBtn     = el.querySelector('#purge-btn');
 
   const nameCache = new Map();
   let currentPreviewSessionId = null;
@@ -86,7 +90,6 @@ export function AdminScreen({ onBack }) {
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
     
-    // Initial clearing
     activeList.innerHTML = '';
     endedList.innerHTML = '';
 
@@ -98,7 +101,6 @@ export function AdminScreen({ onBack }) {
       return;
     }
 
-    // Sort by createdAt descending
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
 
     let activeCount = 0;
@@ -118,7 +120,6 @@ export function AdminScreen({ onBack }) {
       }
     }
 
-    // Update Counts
     countEl.textContent = activeCount;
     el.querySelector('#active-count-badge').textContent = ` (${activeCount})`;
     el.querySelector('#ended-count-badge').textContent = ` (${endedCount})`;
@@ -127,9 +128,52 @@ export function AdminScreen({ onBack }) {
     if (endedCount === 0) endedList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>`;
 
   }, (err) => {
-
     console.error('[Admin] Database error:', err);
     activeList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">Permission Denied</div>`;
+  });
+
+  // --- Maintenance logic: Purge > 24h old chats ---
+  async function cleanOldSessions(silent = true) {
+    try {
+      const snap = await get(sessionsRef);
+      if (!snap.exists()) return;
+      const data = snap.val();
+      const now = Date.now();
+      const cutoff = now - (24 * 60 * 60 * 1000); // 24 hours ago
+      
+      let deletedCount = 0;
+      const tasks = [];
+
+      Object.keys(data).forEach(sid => {
+        const sess = data[sid];
+        if (sess.createdAt && sess.createdAt < cutoff) {
+          tasks.push(remove(ref(rtdb, `sessions/${sid}`)));
+          deletedCount++;
+        }
+      });
+
+      if (tasks.length > 0) {
+        await Promise.all(tasks);
+        if (!silent) showToast(`Cleaned ${deletedCount} sessions older than 24h.`, 'success');
+        else console.log(`[Maintenance] Auto-purged ${deletedCount} old sessions.`);
+      } else if (!silent) {
+        showToast('No sessions older than 24h found.', 'success');
+      }
+    } catch (err) {
+      console.error('[Admin] Cleanup error:', err);
+    }
+  }
+
+  // Auto-clean on entry
+  setTimeout(() => cleanOldSessions(true), 1500);
+
+  purgeBtn.addEventListener('click', () => {
+    purgeBtn.textContent = '⏳ Purging...';
+    purgeBtn.disabled = true;
+    cleanOldSessions(false).finally(() => {
+      purgeBtn.textContent = '🛡️ Purge 24h+ Old Data';
+      purgeBtn.disabled = false;
+    });
   });
 
   function createSessionCard(sid, sess, isEnded) {
@@ -146,16 +190,15 @@ export function AdminScreen({ onBack }) {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
         <div style="font-size:13px; font-weight:500;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
-              <div class="name-label" data-uid="${userA}" style="line-height:1.2;">${userA}</div>
-            </div>
-            <div style="margin:6px 0 6px 14px; opacity:0.3; font-size:8px; font-weight:700;">🤝 MATCHED WITH</div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
-              <div class="name-label" data-uid="${userB}" style="line-height:1.2;">${userB}</div>
-            </div>
-
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
+            <span class="name-label" data-uid="${userA}">${userA}</span>
+          </div>
+          <div style="margin:4px 0; opacity:0.3; font-size:9px;">MATCHED WITH</div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="color:${isEnded ? 'var(--text-muted)' : 'var(--accent-bright)'}; font-size:8px;">●</span>
+            <span class="name-label" data-uid="${userB}">${userB}</span>
+          </div>
         </div>
         <div style="font-size:10px; color:var(--text-muted);">${timeStr}</div>
       </div>
@@ -167,60 +210,37 @@ export function AdminScreen({ onBack }) {
 
     card.querySelector('.view-chat').addEventListener('click', () => {
       const labels = card.querySelectorAll('.name-label');
-      // Extract first child (name) text or fallback
-      const nameA = labels[0].querySelector('div:first-child')?.textContent || 'User A';
-      const nameB = labels[1].querySelector('div:first-child')?.textContent || 'User B';
-      openPreview(sid, nameA, nameB);
+      openPreview(sid, labels[0].textContent, labels[1].textContent);
     });
-
     
     const killBtn = card.querySelector('.end-chat');
     if (killBtn) killBtn.addEventListener('click', () => doEndSession(sid));
 
-    // Lazy resolve full info
-    resolveUserInfo(userA).then(info => {
+    resolveName(userA).then(name => {
       const label = card.querySelector(`[data-uid="${userA}"]`);
-      if (label) {
-        label.innerHTML = `
-          <div style="font-weight:700; color:var(--text-primary);">${info.name}</div>
-          <div style="font-size:10px; color:var(--text-muted);">${info.rollNo} • <span style="font-family:monospace; opacity:0.7;">${userA.slice(0,8)}...</span></div>
-        `;
-      }
+      if (label) label.textContent = name;
     });
-    resolveUserInfo(userB).then(info => {
+    resolveName(userB).then(name => {
       const label = card.querySelector(`[data-uid="${userB}"]`);
-      if (label) {
-        label.innerHTML = `
-          <div style="font-weight:700; color:var(--text-primary);">${info.name}</div>
-          <div style="font-size:10px; color:var(--text-muted);">${info.rollNo} • <span style="font-family:monospace; opacity:0.7;">${userB.slice(0,8)}...</span></div>
-        `;
-      }
+      if (label) label.textContent = name;
     });
 
     return card;
   }
 
-  async function resolveUserInfo(uid) {
-    if (!uid || uid === 'Unknown') return { name: uid, rollNo: '' };
+  async function resolveName(uid) {
+    if (!uid || uid === 'Unknown') return uid;
     if (nameCache.has(uid)) return nameCache.get(uid);
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      const data = snap.exists() ? snap.data() : null;
-      const info = {
-        name: data ? (data.displayName || 'Unknown Name') : 'Unknown User',
-        rollNo: data ? (data.rollNumber || 'No Roll') : 'N/A'
-      };
-      nameCache.set(uid, info);
-      return info;
-    } catch (_) { 
-      return { name: uid, rollNo: '' }; 
-    }
+      const name = snap.exists() ? (snap.data().displayName || uid) : uid;
+      nameCache.set(uid, name);
+      return name;
+    } catch (_) { return uid; }
   }
 
-  // --- Moderation ---
   let msgsUnsub = null;
   function openPreview(sid, nameA, nameB) {
-
     if (msgsUnsub) msgsUnsub();
     currentPreviewSessionId = sid;
     chatPreview.style.display = 'flex';

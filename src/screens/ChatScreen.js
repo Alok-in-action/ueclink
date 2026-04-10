@@ -34,7 +34,8 @@ const HEADER_VARIATIONS = [
   "not as random as you think",
 ];
 
-export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
+export function ChatScreen({ sessionId, myUserId, partnerId, partnerYearLabel, onEnd }) {
+
   const el = document.createElement('div');
   el.className = 'screen';
   el.style.cssText = 'height:100dvh; display:flex; flex-direction:column; overflow:hidden; position:relative;';
@@ -173,13 +174,19 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   // --- Message Rendering ---
   const renderMessages = (msgs) => {
     msgs.forEach(msg => {
+      const isMine = msg.senderId === myUserId;
+
       if (seenKeys.has(msg.key)) {
-        const tick = el.querySelector(`[data-key="${msg.key}"] .bubble-tick`);
-        if (tick && msg.delivered) tick.classList.add('delivered');
+        // Update existing bubble if status changed (e.g., delivered)
+        const bubble = messagesArea.querySelector(`[data-key="${msg.key}"]`);
+        if (bubble) {
+          const tick = bubble.querySelector('.bubble-tick');
+          if (tick && msg.delivered) tick.classList.add('delivered');
+        }
         return;
       }
+
       seenKeys.add(msg.key);
-      const isMine = msg.senderId === myUserId;
 
       const wrapper = document.createElement('div');
       wrapper.dataset.key = msg.key;
@@ -197,10 +204,15 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
         </div>
       `;
       messagesArea.appendChild(wrapper);
-      if (!isMine) markDelivered(sessionId, msg.key);
+
+      // Auto-mark as delivered if it's from the partner and not yet delivered
+      if (!isMine && !msg.delivered) {
+        markDelivered(sessionId, msg.key);
+      }
     });
     scrollToBottom();
   };
+
 
   // --- Viewport / Keyboard Sync ---
   const handleViewportChange = () => {
@@ -228,13 +240,14 @@ export function ChatScreen({ sessionId, myUserId, partnerYearLabel, onEnd }) {
   // --- Real-time Logic ---
   cleanups.push(listenMessages(sessionId, renderMessages));
   
-  cleanups.push(listenTyping(sessionId, myUserId, (isTyping) => {
-    typingSlot.innerHTML = isTyping
+  cleanups.push(listenTyping(sessionId, myUserId, (isPartnerTyping) => {
+    typingSlot.innerHTML = isPartnerTyping
       ? `<div class="typing-indicator" style="margin-left:12px;">
            <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
          </div>`
       : '';
   }));
+
 
   cleanups.push(listenSessionStatus(sessionId, (status) => {
     if (status === 'ended' && !sessionEnded) {

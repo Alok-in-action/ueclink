@@ -149,20 +149,22 @@ function goToMatching(prefs) {
     profile:   userProfile,
     prefs,
     onBack:    () => goToPreferences(),
-    onMatched: ({ sessionId, partnerId }) => goToChat(sessionId, partnerId),
+    onMatched: ({ sessionId, partnerId, partnerYear }) => goToChat(sessionId, partnerId, partnerYear),
     onCancel:  () => goToPreferences(),
   });
   activeCleanup = () => { if (screen._cleanup) screen._cleanup(); };
   showScreen(screen);
 }
 
-function goToChat(sessionId, partnerId) {
+function goToChat(sessionId, partnerId, partnerYear) {
   cleanup();
   const screen = ChatScreen({
     sessionId,
-    myUserId:        currentUser.uid,
-    partnerYearLabel: userProfile.yearLabel,
+    myUserId:         currentUser.uid,
+    partnerId:        partnerId,
+    partnerYearLabel: partnerYear,
     myProfile:        userProfile,
+
     onEnd: ({ sessionId }) => goToPostChat(sessionId),
   });
   activeCleanup = () => { if (screen._cleanup) screen._cleanup(); };

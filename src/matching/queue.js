@@ -47,8 +47,13 @@ export function listenForMatch(userId, onMatched) {
     const data = snap.data();
     console.log('[Queue] status update:', data.status, data.sessionId);
     if (data.status === 'matched' && data.sessionId) {
-      onMatched({ sessionId: data.sessionId, partnerId: data.partnerId });
+      onMatched({ 
+        sessionId: data.sessionId, 
+        partnerId: data.partnerId,
+        partnerYear: data.partnerYear 
+      });
     }
+
   });
 }
 
@@ -109,17 +114,24 @@ export async function tryMatch(userId, profile, prefs) {
 
     // Create RTDB session
     const sessionId = await createSession(userId, partner.userId);
-    console.log('[Queue] session created:', sessionId);
+    
+    // Get year labels for instant sync
+    const myYearLabel      = profile.yearLabel || 'UEC Student';
+    const partnerYearLabel = partner.yearLabel || 'UEC Student';
+
 
     // Mark both as matched
     await Promise.all([
       setDoc(myRef, {
         status: 'matched', sessionId, partnerId: partner.userId, locked: false,
+        partnerYear: partnerYearLabel
       }, { merge: true }),
       setDoc(partnerRef, {
         status: 'matched', sessionId, partnerId: userId, locked: false,
+        partnerYear: myYearLabel
       }, { merge: true }),
     ]);
+
 
     console.log('[Queue] matched!', userId, '↔', partner.userId);
 

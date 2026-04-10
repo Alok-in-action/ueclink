@@ -102,11 +102,12 @@ export function MatchingScreen({ profile, prefs, onMatched, onCancel }) {
     }
     if (cancelled) return;
 
-    unsubscribeMatch = listenForMatch(profile.userId, ({ sessionId, partnerId }) => {
+    unsubscribeMatch = listenForMatch(profile.userId, ({ sessionId, partnerId, partnerYear }) => {
       if (cancelled) return;
       doCleanup();
-      onMatched({ sessionId, partnerId });
+      onMatched({ sessionId, partnerId, partnerYear });
     });
+
 
     // Try matching every 3s
     matchInterval = setInterval(async () => {

@@ -21,42 +21,45 @@ export function AdminScreen({ onBack }) {
   main.style.cssText = 'flex:1;overflow-y:auto;padding:var(--space-md);display:flex;flex-direction:column;gap:24px;';
   
   main.innerHTML = `
-    <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;">
-      <div class="card" style="flex:1;min-width:140px;padding:16px;text-align:center;">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">Active Chats</div>
-        <div id="active-chats-count" style="font-size:24px;font-weight:800;color:var(--accent-bright);">0</div>
+    <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid var(--border-glow); margin-bottom:12px;">
+      <div class="card" style="flex:1; min-width:140px; padding:16px; text-align:center; background:var(--bg-card-2);">
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">Active Chats</div>
+        <div id="active-chats-count" style="font-size:24px; font-weight:800; color:var(--accent-bright);">0</div>
       </div>
     </div>
 
-    <div>
-      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-        <span style="width:8px;height:8px;background:var(--success);border-radius:50%;box-shadow:0 0 8px var(--success);"></span>
+    <div style="margin-top:12px;">
+      <h2 style="font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+        <span style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></span>
         Live Sessions
       </h2>
-      <div id="sessions-list" style="display:flex;flex-direction:column;gap:12px;">
-        <div style="padding:40px;text-align:center;color:var(--text-muted);">Monitoring for streams...</div>
-      </div>
-    </div>
-
-    <!-- Live Preview Overlay (hidden by default) -->
-    <div id="chat-preview" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;
-                  backdrop-filter:blur(8px);padding:var(--space-md);flex-direction:column;gap:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h3 id="preview-title" style="font-size:16px;font-weight:700;">Chat Preview</h3>
-        <button id="close-preview" class="btn btn-ghost btn-sm">Close</button>
-      </div>
-      <div id="preview-messages" style="flex:1;overflow-y:auto;background:rgba(255,255,255,0.05);
-                   border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:8px;">
+      <div id="sessions-list" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="padding:40px; text-align:center; color:var(--text-muted);">Monitoring for streams...</div>
       </div>
     </div>
   `;
+
+  // Live Preview Overlay (appended outside main to keep it fixed but offset)
+  const chatPreview = document.createElement('div');
+  chatPreview.id = 'chat-preview';
+  chatPreview.style.cssText = 'display:none; position:fixed; top:120px; left:0; right:0; bottom:0; background:rgba(0,0,0,0.95); z-index:1000; backdrop-filter:blur(12px); padding:var(--space-md); flex-direction:column; gap:16px; border-top:1px solid var(--accent-glow);';
+  chatPreview.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="preview-title" style="font-size:16px; font-weight:700;">Chat Preview</h3>
+      <button id="close-preview" class="btn btn-ghost btn-sm">Close</button>
+    </div>
+    <div id="preview-messages" style="flex:1; overflow-y:auto; background:rgba(255,255,255,0.05); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; gap:8px;">
+    </div>
+  `;
   el.appendChild(main);
+  el.appendChild(chatPreview);
+
 
   const sessionsList = el.querySelector('#sessions-list');
   const countEl      = el.querySelector('#active-chats-count');
-  const chatPreview  = el.querySelector('#chat-preview');
   const previewMsgs  = el.querySelector('#preview-messages');
   const closePreview = el.querySelector('#close-preview');
+
 
   const nameCache = new Map();
   let currentPreviewSessionId = null;

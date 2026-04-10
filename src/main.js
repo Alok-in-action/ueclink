@@ -46,15 +46,12 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   }
 
   // ── 1. Domain check (plus Admin bypass) ──────────────────
-  const emailLower = (firebaseUser.email || '').toLowerCase();
-  const isAdmin    = emailLower === 'ueclink@gmail.com';
-  
-  if (!emailLower.endsWith('@uecu.ac.in') && !isAdmin) {
+  const isAdmin = firebaseUser.email === 'ueclink@gmail.com';
+  if (!firebaseUser.email?.endsWith('@uecu.ac.in') && !isAdmin) {
     await signOut(auth);
     showScreen(AuthErrorScreen({ onRetry: goToLanding }));
     return;
   }
-
 
 
   currentUser = firebaseUser;
@@ -91,12 +88,8 @@ onAuthStateChanged(auth, async (firebaseUser) => {
     }
   } catch (_) {}
 
-  // ── 3. Initialize Presence (RTDB) ───────────────────────────
-  import('./presence/rtdbPresence.js').then(({ initPresence }) => {
-    initPresence(firebaseUser.uid, userProfile);
-  });
-
-  // ── 4. Navigate immediately ──────────────────────────────────
+  // ── 3. Navigate immediately — no waiting ─────────────────────
+  // If admin, they go to Admin screen by default or can jump there
   if (parsed.isAdmin) {
     import('./screens/AdminScreen.js').then(({ AdminScreen }) => {
       showScreen(AdminScreen({ onBack: goToLanding }));
@@ -106,7 +99,6 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   } else {
     goToPreferences();
   }
-
 
 
   // ── 4. Background tasks (non-blocking, never delay UI) ───────

@@ -1,9 +1,9 @@
 // ============================================================
-// Admin Screen — Real-time monitoring, moderation & maintenance
+// Admin Screen — Real-time monitoring & moderation
 // ============================================================
 
 import { db, rtdb } from '../firebase.js';
-import { ref, onValue, off, update, remove, get } from 'firebase/database';
+import { ref, onValue, off, update, remove } from 'firebase/database';
 import { doc, getDoc } from 'firebase/firestore';
 import { NavHeader } from '../ui/NavHeader.js';
 import { showToast } from '../ui/toast.js';
@@ -31,10 +31,6 @@ export function AdminScreen({ onBack }) {
             <div style="font-size:12px; color:var(--success); border-top:1px solid rgba(255,255,255,0.05); margin-top:4px; padding-top:4px;">● Live Monitoring</div>
           </div>
         </div>
-        
-        <button id="purge-btn" class="btn btn-ghost btn-sm" style="margin-top:16px; min-height:32px; font-size:11px; color:var(--text-muted); border-color:rgba(255,255,255,0.1);">
-          🛡️ Purge 24h+ Old Data
-        </button>
       </div>
     </div>
 
@@ -57,6 +53,7 @@ export function AdminScreen({ onBack }) {
         <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>
       </div>
     </div>
+
   `;
 
   // Live Preview Overlay
@@ -79,7 +76,6 @@ export function AdminScreen({ onBack }) {
   const countEl      = el.querySelector('#active-chats-count');
   const previewMsgs  = el.querySelector('#preview-messages');
   const closePreview = el.querySelector('#close-preview');
-  const purgeBtn     = el.querySelector('#purge-btn');
 
   const nameCache = new Map();
   let currentPreviewSessionId = null;
@@ -90,6 +86,7 @@ export function AdminScreen({ onBack }) {
     const data = snap.val() || {};
     const sessionIds = Object.keys(data);
     
+    // Initial clearing
     activeList.innerHTML = '';
     endedList.innerHTML = '';
 
@@ -101,6 +98,7 @@ export function AdminScreen({ onBack }) {
       return;
     }
 
+    // Sort by createdAt descending
     const sorted = sessionIds.sort((a,b) => (data[b].createdAt || 0) - (data[a].createdAt || 0));
 
     let activeCount = 0;
@@ -120,6 +118,7 @@ export function AdminScreen({ onBack }) {
       }
     }
 
+    // Update Counts
     countEl.textContent = activeCount;
     el.querySelector('#active-count-badge').textContent = ` (${activeCount})`;
     el.querySelector('#ended-count-badge').textContent = ` (${endedCount})`;
@@ -128,52 +127,9 @@ export function AdminScreen({ onBack }) {
     if (endedCount === 0) endedList.innerHTML = `<div style="padding:20px; text-align:center; color:var(--text-muted); font-size:12px; opacity:0.6;">No ended sessions in view.</div>`;
 
   }, (err) => {
+
     console.error('[Admin] Database error:', err);
     activeList.innerHTML = `<div style="padding:40px;text-align:center;color:var(--danger);">Permission Denied</div>`;
-  });
-
-  // --- Maintenance logic: Purge > 24h old chats ---
-  async function cleanOldSessions(silent = true) {
-    try {
-      const snap = await get(sessionsRef);
-      if (!snap.exists()) return;
-      const data = snap.val();
-      const now = Date.now();
-      const cutoff = now - (24 * 60 * 60 * 1000); // 24 hours ago
-      
-      let deletedCount = 0;
-      const tasks = [];
-
-      Object.keys(data).forEach(sid => {
-        const sess = data[sid];
-        if (sess.createdAt && sess.createdAt < cutoff) {
-          tasks.push(remove(ref(rtdb, `sessions/${sid}`)));
-          deletedCount++;
-        }
-      });
-
-      if (tasks.length > 0) {
-        await Promise.all(tasks);
-        if (!silent) showToast(`Cleaned ${deletedCount} sessions older than 24h.`, 'success');
-        else console.log(`[Maintenance] Auto-purged ${deletedCount} old sessions.`);
-      } else if (!silent) {
-        showToast('No sessions older than 24h found.', 'success');
-      }
-    } catch (err) {
-      console.error('[Admin] Cleanup error:', err);
-    }
-  }
-
-  // Auto-clean on entry
-  setTimeout(() => cleanOldSessions(true), 1500);
-
-  purgeBtn.addEventListener('click', () => {
-    purgeBtn.textContent = '⏳ Purging...';
-    purgeBtn.disabled = true;
-    cleanOldSessions(false).finally(() => {
-      purgeBtn.textContent = '🛡️ Purge 24h+ Old Data';
-      purgeBtn.disabled = false;
-    });
   });
 
   function createSessionCard(sid, sess, isEnded) {
@@ -216,6 +172,7 @@ export function AdminScreen({ onBack }) {
     const killBtn = card.querySelector('.end-chat');
     if (killBtn) killBtn.addEventListener('click', () => doEndSession(sid));
 
+    // Lazy resolve names
     resolveName(userA).then(name => {
       const label = card.querySelector(`[data-uid="${userA}"]`);
       if (label) label.textContent = name;
@@ -239,6 +196,7 @@ export function AdminScreen({ onBack }) {
     } catch (_) { return uid; }
   }
 
+  // --- Moderation ---
   let msgsUnsub = null;
   function openPreview(sid, nameA, nameB) {
     if (msgsUnsub) msgsUnsub();

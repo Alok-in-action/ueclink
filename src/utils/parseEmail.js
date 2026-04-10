@@ -28,9 +28,11 @@ const ORDINAL = ['', '1st', '2nd', '3rd', '4th', '5th'];
  */
 export function parseUECEmail(email) {
   if (!email) return null;
+  const emailLower = email.toLowerCase();
   
   // Special Admin bypass
-  if (email === 'ueclink@gmail.com') {
+  if (emailLower === 'ueclink@gmail.com') {
+
     return {
       rollNumber: 'admin',
       branch: 'System Administrator',

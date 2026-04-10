@@ -46,12 +46,15 @@ onAuthStateChanged(auth, async (firebaseUser) => {
   }
 
   // ── 1. Domain check (plus Admin bypass) ──────────────────
-  const isAdmin = firebaseUser.email === 'ueclink@gmail.com';
-  if (!firebaseUser.email?.endsWith('@uecu.ac.in') && !isAdmin) {
+  const emailLower = (firebaseUser.email || '').toLowerCase();
+  const isAdmin    = emailLower === 'ueclink@gmail.com';
+  
+  if (!emailLower.endsWith('@uecu.ac.in') && !isAdmin) {
     await signOut(auth);
     showScreen(AuthErrorScreen({ onRetry: goToLanding }));
     return;
   }
+
 
 
   currentUser = firebaseUser;
